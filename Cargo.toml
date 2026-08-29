@@ -1,0 +1,30 @@
+[package]
+name = "tug_of_war"
+version = "0.1.0"
+edition = "2021"
+default-run = "tug_of_war"
+
+[dependencies]
+eframe = "0.27"
+egui = "0.27"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+csv = "1.3"
+num_cpus = "1.16"
+
+[[bin]]
+name = "tug_of_war"
+path = "src/main.rs"
+
+[[bin]]
+name = "test_simulation"
+path = "src/bin/test_simulation.rs"
+
+[[bin]]
+name = "test_dp"
+path = "src/bin/test_dp.rs"
+
+[[bin]]
+name = "test_experiments"
+path = "src/bin/test_experiments.rs"

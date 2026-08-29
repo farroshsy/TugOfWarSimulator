@@ -1,0 +1,268 @@
+use eframe::egui;
+use crate::game::{GameState, Team, create_default_game, create_small_game};
+use crate::strategies::{Strategy, RandomStrategy, GreedyStrategy, ReactiveStrategy, FatigueAwareStrategy};
+use crate::game::simulation::{step, calculate_score};
+
+#[derive(Clone, Copy, PartialEq)]
+enum StrategyType {
+    Random,
+    Greedy,
+    Reactive,
+    FatigueAware,
+}
+
+impl StrategyType {
+    fn name(&self) -> &str {
+        match self {
+            StrategyType::Random => "Random",
+            StrategyType::Greedy => "Greedy",
+            StrategyType::Reactive => "Reactive",
+            StrategyType::FatigueAware => "FatigueAware",
+        }
+    }
+    
+    fn create(&self, seed: u64) -> Box<dyn Strategy> {
+        match self {
+            StrategyType::Random => Box::new(RandomStrategy::new(seed)),
+            StrategyType::Greedy => Box::new(GreedyStrategy::new()),
+            StrategyType::Reactive => Box::new(ReactiveStrategy::new()),
+            StrategyType::FatigueAware => Box::new(FatigueAwareStrategy::new()),
+        }
+    }
+}
+
+pub struct TugOfWarApp {
+    state: GameState,
+    running: bool,
+    speed: f32,
+    strategy_a: StrategyType,
+    strategy_b: StrategyType,
+    strategy_a_impl: Option<Box<dyn Strategy>>,
+    strategy_b_impl: Option<Box<dyn Strategy>>,
+    seed: u64,
+    game_size: GameSize,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum GameSize {
+    Small,
+    Default,
+}
+
+impl GameSize {
+    fn name(&self) -> &str {
+        match self {
+            GameSize::Small => "Small (3v3, 2 ropes)",
+            GameSize::Default => "Default (12v12, 3 ropes)",
+        }
+    }
+}
+
+impl Default for TugOfWarApp {
+    fn default() -> Self {
+        let state = create_default_game();
+        Self {
+            state,
+            running: false,
+            speed: 1.0,
+            strategy_a: StrategyType::Greedy,
+            strategy_b: StrategyType::Reactive,
+            strategy_a_impl: Some(Box::new(GreedyStrategy::new())),
+            strategy_b_impl: Some(Box::new(ReactiveStrategy::new())),
+            seed: 42,
+            game_size: GameSize::Default,
+        }
+    }
+}
+
+impl eframe::App for TugOfWarApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Top menu bar
+        egui::TopBottomPanel::top("top_bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading("Tug-of-War DP Simulator");
+                ui.separator();
+                ui.label(format!("Time: {}/{}", self.state.time, self.state.rules.duration));
+                
+                let score = calculate_score(&self.state);
+                ui.separator();
+                ui.label(format!("Team A Score: {}", score.team_a));
+                ui.label(format!("Team B Score: {}", score.team_b));
+                
+                ui.separator();
+                let energy_a = self.state.get_team_energy(Team::A);
+                let energy_b = self.state.get_team_energy(Team::B);
+                ui.label(format!("Team A Energy: {:.0}%", energy_a / self.state.get_team_max_energy(Team::A) * 100.0));
+                ui.label(format!("Team B Energy: {:.0}%", energy_b / self.state.get_team_max_energy(Team::B) * 100.0));
+            });
+        });
+        
+        // Main content area
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                // Left panel: Arena visualization
+                ui.vertical(|ui| {
+                    ui.heading("Arena");
+                    ui.separator();
+                    self.draw_arena(ui);
+                });
+                
+                ui.separator();
+                
+                // Right panel: Controls and info
+                ui.vertical(|ui| {
+                    // Game controls
+                    ui.heading("Controls");
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if ui.button(if self.running { "Pause" } else { "Start" }).clicked() {
+                            self.running = !self.running;
+                        }
+                        
+                        if ui.button("Step").clicked() {
+                            self.step_game();
+                        }
+                        
+                        if ui.button("Reset").clicked() {
+                            self.reset_game();
+                        }
+                    });
+                    
+                    ui.separator();
+                    
+                    // Speed control
+                    ui.label("Speed:");
+                    ui.add(egui::Slider::new(&mut self.speed, 0.25..=8.0).step_by(0.25).show_value(true));
+                    
+                    ui.separator();
+                    
+                    // Strategy selection
+                    ui.heading("Strategies");
+                    ui.separator();
+                    
+                    ui.label("Team A Strategy:");
+                    for strategy in [StrategyType::Random, StrategyType::Greedy, StrategyType::Reactive, StrategyType::FatigueAware] {
+                        ui.radio_value(&mut self.strategy_a, strategy, strategy.name());
+                    }
+                    
+                    ui.label("Team B Strategy:");
+                    for strategy in [StrategyType::Random, StrategyType::Greedy, StrategyType::Reactive, StrategyType::FatigueAware] {
+                        ui.radio_value(&mut self.strategy_b, strategy, strategy.name());
+                    }
+                    
+                    ui.separator();
+                    
+                    // Game size selection
+                    ui.heading("Game Configuration");
+                    ui.separator();
+                    
+                    ui.label("Game Size:");
+                    for size in [GameSize::Small, GameSize::Default] {
+                        ui.radio_value(&mut self.game_size, size, size.name());
+                    }
+                    
+                    ui.separator();
+                    
+                    // Seed display
+                    ui.label(format!("Seed: {}", self.seed));
+                });
+            });
+        });
+        
+        // Run simulation if running
+        if self.running && !self.state.finished() {
+            // Run multiple steps based on speed
+            let steps = (self.speed * 2.0) as usize;
+            for _ in 0..steps.max(1) {
+                if self.state.finished() {
+                    break;
+                }
+                self.step_game();
+            }
+            
+            // Request repaint for smooth animation
+            ctx.request_repaint();
+        }
+    }
+}
+
+impl TugOfWarApp {
+    fn step_game(&mut self) {
+        if self.state.finished() {
+            self.running = false;
+            return;
+        }
+        
+        // Recreate strategies if needed
+        if self.strategy_a_impl.is_none() || self.strategy_a_impl.as_ref().unwrap().name() != self.strategy_a.name() {
+            self.strategy_a_impl = Some(self.strategy_a.create(self.seed));
+        }
+        if self.strategy_b_impl.is_none() || self.strategy_b_impl.as_ref().unwrap().name() != self.strategy_b.name() {
+            self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1));
+        }
+        
+        let action_a = self.strategy_a_impl.as_mut().unwrap().decide(&self.state, Team::A);
+        let action_b = self.strategy_b_impl.as_mut().unwrap().decide(&self.state, Team::B);
+        
+        step(&mut self.state, &action_a, &action_b);
+    }
+    
+    fn reset_game(&mut self) {
+        self.state = match self.game_size {
+            GameSize::Small => create_small_game(),
+            GameSize::Default => create_default_game(),
+        };
+        self.running = false;
+        self.strategy_a_impl = Some(self.strategy_a.create(self.seed));
+        self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1));
+    }
+    
+    fn draw_arena(&mut self, ui: &mut egui::Ui) {
+        ui.label("TEAM A");
+        ui.separator();
+        
+        for rope in &self.state.ropes {
+            ui.horizontal(|ui| {
+                ui.label(format!("Rope {} (v={}, w={}):", rope.id, rope.value, rope.weight));
+                
+                // Draw rope position visualization
+                let available_width = ui.available_width() - 200.0;
+                let center = available_width / 2.0;
+                let position_range = self.state.rules.position_range as f32;
+                let rope_pos = rope.position as f32;
+                
+                // Calculate position in pixels
+                let _pixel_pos = center + (rope_pos / position_range) * (center - 20.0);
+                
+                // Draw rope position with simple text
+                let position_text = if rope.position < 0 {
+                    format!("{} units in A territory", rope.position.abs())
+                } else if rope.position > 0 {
+                    format!("{} units in B territory", rope.position)
+                } else {
+                    "at center".to_string()
+                };
+                
+                ui.label(position_text);
+                
+                // Simple bar visualization
+                let bar_width = (rope.position.abs() as f32 / position_range) * (center - 20.0);
+                let bar_color = if rope.position < 0 {
+                    egui::Color32::BLUE
+                } else if rope.position > 0 {
+                    egui::Color32::RED
+                } else {
+                    egui::Color32::GRAY
+                };
+                
+                ui.add_sized([200.0, 20.0], egui::ProgressBar::new(bar_width / (center - 20.0)).fill(bar_color));
+                
+                // Show player counts
+                ui.label(format!("A: {} | B: {}", rope.team_a_count, rope.team_b_count));
+            });
+        }
+        
+        ui.separator();
+        ui.label("TEAM B");
+    }
+}
