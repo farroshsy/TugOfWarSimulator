@@ -114,7 +114,13 @@ The central challenge: **What information from the past is actually necessary to
 ```
 S = (t, x₁, x₂, ..., x_R)
 ```
-where `t` = time, `x_i` = rope position
+where `t` = time, `x_i` = rope position. This is only enough when teams can fully reallocate every turn at no cost (the arena games).
+
+**With switching limits and costs** (the small and default games)
+```
+S = (t, x₁, ..., x_R, assignment of each player, stamina of each player)
+```
+Switching costs stamina (which scales pulling force) and the per-turn switch limit makes the reachable allocations depend on where players stand now. Keying on positions alone merged distinct states: the small game has ~724,000 states, not 91.
 
 **Fatigue-Aware DP**
 ```
@@ -147,11 +153,17 @@ T: S × A_A × A_B → S'
 
 ### Bellman Recurrence
 
+Sequential maximin (`DP`), which assumes B sees A's move first:
 ```
 V_t(S) = max_{a_A ∈ A_A(S)} min_{a_B ∈ A_B(S)} V_{t+1}(T(S, a_A, a_B))
 ```
 
-Team A maximizes, Team B minimizes (finite-horizon minimax).
+Both teams actually move **simultaneously**, so the correct recurrence (Shapley, 1953; `ShapleyDP`) takes the value of a matrix game at each state, which may need mixed strategies:
+```
+M_S[a_A][a_B] = E[ V_{t+1}(S') | S, a_A, a_B ]        (expectation over chance with stochastic physics)
+V_t(S)        = max_{x ∈ Δ(A_A)} min_{a_B} Σ_{a_A} x(a_A) · M_S[a_A][a_B]     (solved by LP)
+```
+Sequential maximin is a lower bound for A on the true value. See [docs/research-solution-methods.md](docs/research-solution-methods.md).
 
 ---
 
@@ -393,6 +405,7 @@ This project includes comprehensive mathematical and methodological documentatio
 - **[docs/validation.md](docs/validation.md)**: Systematic validation methodology for models, algorithms, and implementations
 - **[docs/experiments.md](docs/experiments.md)**: Guide to running experiments and comparing strategies
 - **[docs/problem-modeling-template.md](docs/problem-modeling-template.md)**: Reusable worksheet for new problems
+- **[docs/readme-review-notes.md](docs/readme-review-notes.md)**: Earlier README review and what was done from it
 - **[docs/research-solution-methods.md](docs/research-solution-methods.md)**: Sourced survey of solution methods (Blotto, Shapley, SM-MCTS, CFR, PSRO, ...) mapped to model levels
 
 ---
@@ -557,7 +570,7 @@ Small game (for DP testing):
 
 > **Status:** Example output shown below. These numbers are illustrative and should not be interpreted as scientifically validated results unless accompanied by the corresponding experiment configuration, seed, model version, and reproducibility information.
 
-Example results (100 games each, seed 42, `strength_variation: 0.2`). Rows are "A vs B"; "Avg Score" is Team A's mean final score differential. Plain rows use the small game, `[small]` rows too; `[3v3]`/`[3v2]` rows use the arena games. Run with `cargo run --release --bin test_experiments` (~6 min).
+Example results (100 games each, seed 42, `strength_variation: 0.2`). Rows are "A vs B"; "Avg Score" is Team A's mean final score differential. Plain rows use the small game, `[small]` rows too; `[3v3]`/`[3v2]` rows use the arena games; `[noisy ...]` rows use the arena games with stochastic physics. Run with `cargo run --release --bin test_experiments` (~15 min).
 
 ```
 Strategy                 Wins   Losses    Draws Win Rate  Avg Score
@@ -599,15 +612,30 @@ FatigueAware vs Random       97        3        0    97.0       0.94
 [3v2] ShapleyDP-Win vs ShapleyDP      100        0        0   100.0       1.06
 [3v2] SM-MCTS vs Greedy      100        0        0   100.0       2.78
 [3v2] SM-MCTS vs ShapleyDP      100        0        0   100.0       2.30
+[noisy 3v2] ShapleyDP vs Greedy       85       15        0    85.0       1.94
+[noisy 3v2] ShapleyDP-Win vs Greedy       87       13        0    87.0       1.78
+[noisy 3v2] Greedy vs ShapleyDP       88       12        0    88.0       0.68
+[noisy 3v2] Greedy vs ShapleyDP-Win       76       22        2    76.0       0.44
+[noisy 3v2] SM-MCTS vs Greedy       77       23        0    77.0       1.32
+[noisy 3v3] ShapleyDP vs Greedy       49       51        0    49.0       0.36
+[noisy 3v3] ShapleyDP-Win vs Greedy       55       45        0    55.0       0.48
+[noisy 3v3] Greedy vs ShapleyDP       43       57        0    43.0      -0.74
+[noisy 3v3] Greedy vs ShapleyDP-Win       36       64        0    36.0      -0.74
+[noisy 3v3] SM-MCTS vs Greedy       44       56        0    44.0       0.16
 ```
+
+![Strategy battle: Team A's mean final margin per matchup](docs/images/strategy-battle.svg)
+
+Regenerate the chart after running experiments: `python3 scripts/plot_results.py`.
 
 ### Findings so far
 
-1. **Winners are decided before play starts.** In the arena games, every initial state has win-probability value exactly -1, 0 or +1: with deterministic physics and perfect information, the stronger team (after the strength draw) can always force the result. Strategy only changes the *margin*, which is why win counts barely move between rows while "Avg Score" does. Win probability only becomes meaningful once uncertainty (stochastic physics, hidden information) is added.
-2. **Exploit vs. safety.** Sequential DP and ApproxDP plan against one assumed opponent and beat Greedy by more than Shapley DP does ([3v2] DP vs Greedy +3.00 vs ShapleyDP +2.46), but Shapley DP punishes them ([3v2] DP vs ShapleyDP +1.73). Shapley DP is never worse than the game value against any opponent.
-3. **Shapley DP as the weaker team dodges.** In 3v2, Greedy B stacks its 2 players against A's 3 on the value-2 rope and concedes it (a +2 margin for A). Shapley DP as B cuts Greedy's margin to +1.06 by contesting the value-1 rope it can win instead.
-4. **SM-MCTS approximates Shapley DP where it converges.** On the arenas it plays close to Shapley DP ([3v2] vs ShapleyDP +2.30 vs Shapley self-play +2.32). On the 10-turn small game with heavy ropes and a 2-switch limit, 1,000 iterations per turn are not enough (it loses to Greedy); it reaches parity with Greedy at about 16,000 iterations.
-5. **The state is bigger than it looks.** The exact DP originally keyed states by rope positions only. Switching costs stamina and switches are limited, so assignments and stamina are part of the state too: the small game grows from 91 to ~724,000 states (82 s to solve in release).
+1. **Winners are decided before play starts.** In the arena games, every initial state has win-probability value exactly -1, 0 or +1: with deterministic physics and perfect information, the stronger team (after the strength draw) can always force the result. Strategy only changes the *margin*, which is why win counts barely move between rows while "Avg Score" does. Win probability only becomes meaningful once uncertainty is added.
+2. **With stochastic physics, the objective matters.** In the noisy arenas (each pull is a Tullock contest: the rope moves toward A with probability F_A²/(F_A²+F_B²)), maximizing win probability wins more games than maximizing expected margin in all four matchups against Greedy (as A: 87 vs 85 in 3v2, 55 vs 49 in 3v3; as B, Greedy's wins drop from 88 to 76 and from 43 to 36), usually with a smaller average margin. With 100 games the standard error is about ±5 percentage points, so individual gaps are suggestive rather than conclusive.
+3. **Exploit vs. safety.** Sequential DP and ApproxDP plan against one assumed opponent and beat Greedy by more than Shapley DP does ([3v2] DP vs Greedy +3.00 vs ShapleyDP +2.46), but Shapley DP punishes them ([3v2] DP vs ShapleyDP +1.73). Shapley DP is never worse than the game value against any opponent.
+4. **Shapley DP as the weaker team dodges.** In 3v2, Greedy B stacks its 2 players against A's 3 on the value-2 rope and concedes it (a +2 margin for A). Shapley DP as B cuts Greedy's margin to +1.06 by contesting the value-1 rope it can win instead.
+5. **SM-MCTS approximates Shapley DP where it converges.** On the arenas it plays close to Shapley DP ([3v2] vs ShapleyDP +2.30 vs Shapley self-play +2.32). On the 10-turn small game with heavy ropes and a 2-switch limit, 1,000 iterations per turn are not enough (it loses to Greedy); it reaches parity with Greedy at about 16,000 iterations.
+6. **The state is bigger than it looks.** The exact DP originally keyed states by rope positions only. Switching costs stamina and switches are limited, so assignments and stamina are part of the state too: the small game grows from 91 to ~724,000 states (82 s to solve in release).
 
 ---
 

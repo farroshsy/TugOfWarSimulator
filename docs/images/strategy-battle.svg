@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 1288" width="760" height="1288" font-family="system-ui, -apple-system, Segoe UI, sans-serif" role="img" aria-label="Mean final score margin for Team A by matchup">
+<style>
+  .bg { fill: #fcfcfb; } .t1 { fill: #0b0b0b; } .t2 { fill: #52514e; }
+  .grid { stroke: #e4e3df; } .zero { stroke: #52514e; }
+  .pos { fill: #2a78d6; } .neg { fill: #e34948; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19; } .t1 { fill: #ffffff; } .t2 { fill: #c3c2b7; }
+    .grid { stroke: #383835; } .zero { stroke: #c3c2b7; }
+    .pos { fill: #3987e5; } .neg { fill: #e66767; }
+  }
+</style>
+<rect class="bg" width="760" height="1288" rx="8"/>
+<text class="t1" x="16" y="26" font-size="16" font-weight="600">Strategy battle: Team A's mean final margin</text>
+<text class="t2" x="16" y="46" font-size="12">Rows are "A vs B", 100 games each. Right/blue = A ahead, left/red = B ahead. Hover a bar for W/L/D.</text>
+<line class="grid" x1="246.0" x2="246.0" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="246.0" y="1272" font-size="11" text-anchor="middle">-3</text>
+<line class="grid" x1="320.3" x2="320.3" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="320.3" y="1272" font-size="11" text-anchor="middle">-2</text>
+<line class="grid" x1="394.7" x2="394.7" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="394.7" y="1272" font-size="11" text-anchor="middle">-1</text>
+<line class="zero" x1="469.0" x2="469.0" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="469.0" y="1272" font-size="11" text-anchor="middle">+0</text>
+<line class="grid" x1="543.3" x2="543.3" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="543.3" y="1272" font-size="11" text-anchor="middle">+1</text>
+<line class="grid" x1="617.7" x2="617.7" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="617.7" y="1272" font-size="11" text-anchor="middle">+2</text>
+<line class="grid" x1="692.0" x2="692.0" y1="56" y2="1254" stroke-width="1"/>
+<text class="t2" x="692.0" y="1272" font-size="11" text-anchor="middle">+3</text>
+<text class="t1" x="16" y="84" font-size="12" font-weight="600">small</text>
+<text class="t2" x="238" y="109.0" font-size="12" text-anchor="end">Random vs Greedy</text>
+<g><title>Random vs Greedy: margin -0.96, A won 1, lost 99, drew 0</title><rect x="397.6" y="98" width="71.4" height="14" rx="3" class="neg"/><rect x="246" y="94" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="109.0" font-size="12" font-variant-numeric="tabular-nums">-0.96</text>
+<text class="t2" x="238" y="131.0" font-size="12" text-anchor="end">Greedy vs Reactive</text>
+<g><title>Greedy vs Reactive: margin +0.04, A won 24, lost 26, drew 50</title><rect x="469.0" y="120" width="3.0" height="14" rx="3" class="pos"/><rect x="246" y="116" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="131.0" font-size="12" font-variant-numeric="tabular-nums">+0.04</text>
+<text class="t2" x="238" y="153.0" font-size="12" text-anchor="end">Reactive vs FatigueAware</text>
+<g><title>Reactive vs FatigueAware: margin +0.42, A won 40, lost 10, drew 50</title><rect x="469.0" y="142" width="31.2" height="14" rx="3" class="pos"/><rect x="246" y="138" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="153.0" font-size="12" font-variant-numeric="tabular-nums">+0.42</text>
+<text class="t2" x="238" y="175.0" font-size="12" text-anchor="end">FatigueAware vs Random</text>
+<g><title>FatigueAware vs Random: margin +0.94, A won 97, lost 3, drew 0</title><rect x="469.0" y="164" width="69.9" height="14" rx="3" class="pos"/><rect x="246" y="160" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="175.0" font-size="12" font-variant-numeric="tabular-nums">+0.94</text>
+<text class="t2" x="238" y="197.0" font-size="12" text-anchor="end">SM-MCTS vs Greedy</text>
+<g><title>SM-MCTS vs Greedy: margin -0.40, A won 13, lost 75, drew 12</title><rect x="439.3" y="186" width="29.7" height="14" rx="3" class="neg"/><rect x="246" y="182" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="197.0" font-size="12" font-variant-numeric="tabular-nums">-0.40</text>
+<text class="t2" x="238" y="219.0" font-size="12" text-anchor="end">Greedy vs SM-MCTS</text>
+<g><title>Greedy vs SM-MCTS: margin +0.48, A won 77, lost 13, drew 10</title><rect x="469.0" y="208" width="35.7" height="14" rx="3" class="pos"/><rect x="246" y="204" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="219.0" font-size="12" font-variant-numeric="tabular-nums">+0.48</text>
+<text class="t2" x="238" y="241.0" font-size="12" text-anchor="end">SM-MCTS vs Reactive</text>
+<g><title>SM-MCTS vs Reactive: margin -0.40, A won 13, lost 75, drew 12</title><rect x="439.3" y="230" width="29.7" height="14" rx="3" class="neg"/><rect x="246" y="226" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="241.0" font-size="12" font-variant-numeric="tabular-nums">-0.40</text>
+<text class="t2" x="238" y="263.0" font-size="12" text-anchor="end">SM-MCTS vs ApproxDP</text>
+<g><title>SM-MCTS vs ApproxDP: margin -0.45, A won 14, lost 74, drew 12</title><rect x="435.6" y="252" width="33.4" height="14" rx="3" class="neg"/><rect x="246" y="248" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="263.0" font-size="12" font-variant-numeric="tabular-nums">-0.45</text>
+<text class="t2" x="238" y="285.0" font-size="12" text-anchor="end">ApproxDP vs SM-MCTS</text>
+<g><title>ApproxDP vs SM-MCTS: margin +0.50, A won 78, lost 12, drew 10</title><rect x="469.0" y="274" width="37.2" height="14" rx="3" class="pos"/><rect x="246" y="270" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="285.0" font-size="12" font-variant-numeric="tabular-nums">+0.50</text>
+<text class="t1" x="16" y="312" font-size="12" font-weight="600">3v3</text>
+<text class="t2" x="238" y="337.0" font-size="12" text-anchor="end">ShapleyDP vs Greedy</text>
+<g><title>ShapleyDP vs Greedy: margin +0.44, A won 34, lost 38, drew 28</title><rect x="469.0" y="326" width="32.7" height="14" rx="3" class="pos"/><rect x="246" y="322" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="337.0" font-size="12" font-variant-numeric="tabular-nums">+0.44</text>
+<text class="t2" x="238" y="359.0" font-size="12" text-anchor="end">Greedy vs ShapleyDP</text>
+<g><title>Greedy vs ShapleyDP: margin -0.46, A won 34, lost 38, drew 28</title><rect x="434.8" y="348" width="34.2" height="14" rx="3" class="neg"/><rect x="246" y="344" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="359.0" font-size="12" font-variant-numeric="tabular-nums">-0.46</text>
+<text class="t2" x="238" y="381.0" font-size="12" text-anchor="end">ShapleyDP vs Random</text>
+<g><title>ShapleyDP vs Random: margin +0.69, A won 67, lost 22, drew 11</title><rect x="469.0" y="370" width="51.3" height="14" rx="3" class="pos"/><rect x="246" y="366" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="381.0" font-size="12" font-variant-numeric="tabular-nums">+0.69</text>
+<text class="t2" x="238" y="403.0" font-size="12" text-anchor="end">DP vs Greedy</text>
+<g><title>DP vs Greedy: margin +0.42, A won 34, lost 38, drew 28</title><rect x="469.0" y="392" width="31.2" height="14" rx="3" class="pos"/><rect x="246" y="388" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="403.0" font-size="12" font-variant-numeric="tabular-nums">+0.42</text>
+<text class="t2" x="238" y="425.0" font-size="12" text-anchor="end">DP vs ShapleyDP</text>
+<g><title>DP vs ShapleyDP: margin -0.15, A won 34, lost 35, drew 31</title><rect x="457.9" y="414" width="11.1" height="14" rx="3" class="neg"/><rect x="246" y="410" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="425.0" font-size="12" font-variant-numeric="tabular-nums">-0.15</text>
+<text class="t2" x="238" y="447.0" font-size="12" text-anchor="end">ApproxDP vs Greedy</text>
+<g><title>ApproxDP vs Greedy: margin +0.64, A won 34, lost 38, drew 28</title><rect x="469.0" y="436" width="47.6" height="14" rx="3" class="pos"/><rect x="246" y="432" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="447.0" font-size="12" font-variant-numeric="tabular-nums">+0.64</text>
+<text class="t2" x="238" y="469.0" font-size="12" text-anchor="end">Greedy vs ApproxDP</text>
+<g><title>Greedy vs ApproxDP: margin -0.80, A won 34, lost 38, drew 28</title><rect x="409.5" y="458" width="59.5" height="14" rx="3" class="neg"/><rect x="246" y="454" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="469.0" font-size="12" font-variant-numeric="tabular-nums">-0.80</text>
+<text class="t2" x="238" y="491.0" font-size="12" text-anchor="end">ApproxDP vs ShapleyDP</text>
+<g><title>ApproxDP vs ShapleyDP: margin -0.06, A won 34, lost 36, drew 30</title><rect x="464.5" y="480" width="4.5" height="14" rx="3" class="neg"/><rect x="246" y="476" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="491.0" font-size="12" font-variant-numeric="tabular-nums">-0.06</text>
+<text class="t2" x="238" y="513.0" font-size="12" text-anchor="end">FatigueDP vs ShapleyDP</text>
+<g><title>FatigueDP vs ShapleyDP: margin -0.14, A won 34, lost 32, drew 34</title><rect x="458.6" y="502" width="10.4" height="14" rx="3" class="neg"/><rect x="246" y="498" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="513.0" font-size="12" font-variant-numeric="tabular-nums">-0.14</text>
+<text class="t2" x="238" y="535.0" font-size="12" text-anchor="end">ShapleyDP vs ShapleyDP</text>
+<g><title>ShapleyDP vs ShapleyDP: margin -0.08, A won 34, lost 38, drew 28</title><rect x="463.1" y="524" width="5.9" height="14" rx="3" class="neg"/><rect x="246" y="520" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="535.0" font-size="12" font-variant-numeric="tabular-nums">-0.08</text>
+<text class="t2" x="238" y="557.0" font-size="12" text-anchor="end">ShapleyDP-Win vs Greedy</text>
+<g><title>ShapleyDP-Win vs Greedy: margin -0.08, A won 34, lost 38, drew 28</title><rect x="463.1" y="546" width="5.9" height="14" rx="3" class="neg"/><rect x="246" y="542" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="557.0" font-size="12" font-variant-numeric="tabular-nums">-0.08</text>
+<text class="t2" x="238" y="579.0" font-size="12" text-anchor="end">ShapleyDP-Win vs ShapleyDP</text>
+<g><title>ShapleyDP-Win vs ShapleyDP: margin -0.41, A won 34, lost 33, drew 33</title><rect x="438.5" y="568" width="30.5" height="14" rx="3" class="neg"/><rect x="246" y="564" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="579.0" font-size="12" font-variant-numeric="tabular-nums">-0.41</text>
+<text class="t2" x="238" y="601.0" font-size="12" text-anchor="end">SM-MCTS vs Greedy</text>
+<g><title>SM-MCTS vs Greedy: margin +0.37, A won 34, lost 53, drew 13</title><rect x="469.0" y="590" width="27.5" height="14" rx="3" class="pos"/><rect x="246" y="586" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="601.0" font-size="12" font-variant-numeric="tabular-nums">+0.37</text>
+<text class="t2" x="238" y="623.0" font-size="12" text-anchor="end">SM-MCTS vs ShapleyDP</text>
+<g><title>SM-MCTS vs ShapleyDP: margin -0.31, A won 34, lost 51, drew 15</title><rect x="446.0" y="612" width="23.0" height="14" rx="3" class="neg"/><rect x="246" y="608" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="623.0" font-size="12" font-variant-numeric="tabular-nums">-0.31</text>
+<text class="t1" x="16" y="650" font-size="12" font-weight="600">3v2</text>
+<text class="t2" x="238" y="675.0" font-size="12" text-anchor="end">ShapleyDP vs Greedy</text>
+<g><title>ShapleyDP vs Greedy: margin +2.46, A won 99, lost 1, drew 0</title><rect x="469.0" y="664" width="182.9" height="14" rx="3" class="pos"/><rect x="246" y="660" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="675.0" font-size="12" font-variant-numeric="tabular-nums">+2.46</text>
+<text class="t2" x="238" y="697.0" font-size="12" text-anchor="end">Greedy vs ShapleyDP</text>
+<g><title>Greedy vs ShapleyDP: margin +1.06, A won 100, lost 0, drew 0</title><rect x="469.0" y="686" width="78.8" height="14" rx="3" class="pos"/><rect x="246" y="682" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="697.0" font-size="12" font-variant-numeric="tabular-nums">+1.06</text>
+<text class="t2" x="238" y="719.0" font-size="12" text-anchor="end">ShapleyDP vs Random</text>
+<g><title>ShapleyDP vs Random: margin +2.39, A won 97, lost 2, drew 1</title><rect x="469.0" y="708" width="177.7" height="14" rx="3" class="pos"/><rect x="246" y="704" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="719.0" font-size="12" font-variant-numeric="tabular-nums">+2.39</text>
+<text class="t2" x="238" y="741.0" font-size="12" text-anchor="end">DP vs Greedy</text>
+<g><title>DP vs Greedy: margin +3.00, A won 100, lost 0, drew 0</title><rect x="469.0" y="730" width="223.0" height="14" rx="3" class="pos"/><rect x="246" y="726" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="741.0" font-size="12" font-variant-numeric="tabular-nums">+3.00</text>
+<text class="t2" x="238" y="763.0" font-size="12" text-anchor="end">DP vs ShapleyDP</text>
+<g><title>DP vs ShapleyDP: margin +1.73, A won 100, lost 0, drew 0</title><rect x="469.0" y="752" width="128.6" height="14" rx="3" class="pos"/><rect x="246" y="748" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="763.0" font-size="12" font-variant-numeric="tabular-nums">+1.73</text>
+<text class="t2" x="238" y="785.0" font-size="12" text-anchor="end">ApproxDP vs Greedy</text>
+<g><title>ApproxDP vs Greedy: margin +3.00, A won 100, lost 0, drew 0</title><rect x="469.0" y="774" width="223.0" height="14" rx="3" class="pos"/><rect x="246" y="770" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="785.0" font-size="12" font-variant-numeric="tabular-nums">+3.00</text>
+<text class="t2" x="238" y="807.0" font-size="12" text-anchor="end">Greedy vs ApproxDP</text>
+<g><title>Greedy vs ApproxDP: margin +1.00, A won 100, lost 0, drew 0</title><rect x="469.0" y="796" width="74.3" height="14" rx="3" class="pos"/><rect x="246" y="792" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="807.0" font-size="12" font-variant-numeric="tabular-nums">+1.00</text>
+<text class="t2" x="238" y="829.0" font-size="12" text-anchor="end">ApproxDP vs ShapleyDP</text>
+<g><title>ApproxDP vs ShapleyDP: margin +2.36, A won 100, lost 0, drew 0</title><rect x="469.0" y="818" width="175.4" height="14" rx="3" class="pos"/><rect x="246" y="814" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="829.0" font-size="12" font-variant-numeric="tabular-nums">+2.36</text>
+<text class="t2" x="238" y="851.0" font-size="12" text-anchor="end">FatigueDP vs ShapleyDP</text>
+<g><title>FatigueDP vs ShapleyDP: margin +1.73, A won 100, lost 0, drew 0</title><rect x="469.0" y="840" width="128.6" height="14" rx="3" class="pos"/><rect x="246" y="836" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="851.0" font-size="12" font-variant-numeric="tabular-nums">+1.73</text>
+<text class="t2" x="238" y="873.0" font-size="12" text-anchor="end">ShapleyDP vs ShapleyDP</text>
+<g><title>ShapleyDP vs ShapleyDP: margin +2.32, A won 98, lost 0, drew 2</title><rect x="469.0" y="862" width="172.5" height="14" rx="3" class="pos"/><rect x="246" y="858" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="873.0" font-size="12" font-variant-numeric="tabular-nums">+2.32</text>
+<text class="t2" x="238" y="895.0" font-size="12" text-anchor="end">ShapleyDP-Win vs Greedy</text>
+<g><title>ShapleyDP-Win vs Greedy: margin +2.00, A won 100, lost 0, drew 0</title><rect x="469.0" y="884" width="148.7" height="14" rx="3" class="pos"/><rect x="246" y="880" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="895.0" font-size="12" font-variant-numeric="tabular-nums">+2.00</text>
+<text class="t2" x="238" y="917.0" font-size="12" text-anchor="end">ShapleyDP-Win vs ShapleyDP</text>
+<g><title>ShapleyDP-Win vs ShapleyDP: margin +1.06, A won 100, lost 0, drew 0</title><rect x="469.0" y="906" width="78.8" height="14" rx="3" class="pos"/><rect x="246" y="902" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="917.0" font-size="12" font-variant-numeric="tabular-nums">+1.06</text>
+<text class="t2" x="238" y="939.0" font-size="12" text-anchor="end">SM-MCTS vs Greedy</text>
+<g><title>SM-MCTS vs Greedy: margin +2.78, A won 100, lost 0, drew 0</title><rect x="469.0" y="928" width="206.6" height="14" rx="3" class="pos"/><rect x="246" y="924" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="939.0" font-size="12" font-variant-numeric="tabular-nums">+2.78</text>
+<text class="t2" x="238" y="961.0" font-size="12" text-anchor="end">SM-MCTS vs ShapleyDP</text>
+<g><title>SM-MCTS vs ShapleyDP: margin +2.30, A won 100, lost 0, drew 0</title><rect x="469.0" y="950" width="171.0" height="14" rx="3" class="pos"/><rect x="246" y="946" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="961.0" font-size="12" font-variant-numeric="tabular-nums">+2.30</text>
+<text class="t1" x="16" y="988" font-size="12" font-weight="600">noisy 3v2</text>
+<text class="t2" x="238" y="1013.0" font-size="12" text-anchor="end">ShapleyDP vs Greedy</text>
+<g><title>ShapleyDP vs Greedy: margin +1.94, A won 85, lost 15, drew 0</title><rect x="469.0" y="1002" width="144.2" height="14" rx="3" class="pos"/><rect x="246" y="998" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1013.0" font-size="12" font-variant-numeric="tabular-nums">+1.94</text>
+<text class="t2" x="238" y="1035.0" font-size="12" text-anchor="end">ShapleyDP-Win vs Greedy</text>
+<g><title>ShapleyDP-Win vs Greedy: margin +1.78, A won 87, lost 13, drew 0</title><rect x="469.0" y="1024" width="132.3" height="14" rx="3" class="pos"/><rect x="246" y="1020" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1035.0" font-size="12" font-variant-numeric="tabular-nums">+1.78</text>
+<text class="t2" x="238" y="1057.0" font-size="12" text-anchor="end">Greedy vs ShapleyDP</text>
+<g><title>Greedy vs ShapleyDP: margin +0.68, A won 88, lost 12, drew 0</title><rect x="469.0" y="1046" width="50.5" height="14" rx="3" class="pos"/><rect x="246" y="1042" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1057.0" font-size="12" font-variant-numeric="tabular-nums">+0.68</text>
+<text class="t2" x="238" y="1079.0" font-size="12" text-anchor="end">Greedy vs ShapleyDP-Win</text>
+<g><title>Greedy vs ShapleyDP-Win: margin +0.44, A won 76, lost 22, drew 2</title><rect x="469.0" y="1068" width="32.7" height="14" rx="3" class="pos"/><rect x="246" y="1064" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1079.0" font-size="12" font-variant-numeric="tabular-nums">+0.44</text>
+<text class="t2" x="238" y="1101.0" font-size="12" text-anchor="end">SM-MCTS vs Greedy</text>
+<g><title>SM-MCTS vs Greedy: margin +1.32, A won 77, lost 23, drew 0</title><rect x="469.0" y="1090" width="98.1" height="14" rx="3" class="pos"/><rect x="246" y="1086" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1101.0" font-size="12" font-variant-numeric="tabular-nums">+1.32</text>
+<text class="t1" x="16" y="1128" font-size="12" font-weight="600">noisy 3v3</text>
+<text class="t2" x="238" y="1153.0" font-size="12" text-anchor="end">ShapleyDP vs Greedy</text>
+<g><title>ShapleyDP vs Greedy: margin +0.36, A won 49, lost 51, drew 0</title><rect x="469.0" y="1142" width="26.8" height="14" rx="3" class="pos"/><rect x="246" y="1138" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1153.0" font-size="12" font-variant-numeric="tabular-nums">+0.36</text>
+<text class="t2" x="238" y="1175.0" font-size="12" text-anchor="end">ShapleyDP-Win vs Greedy</text>
+<g><title>ShapleyDP-Win vs Greedy: margin +0.48, A won 55, lost 45, drew 0</title><rect x="469.0" y="1164" width="35.7" height="14" rx="3" class="pos"/><rect x="246" y="1160" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1175.0" font-size="12" font-variant-numeric="tabular-nums">+0.48</text>
+<text class="t2" x="238" y="1197.0" font-size="12" text-anchor="end">Greedy vs ShapleyDP</text>
+<g><title>Greedy vs ShapleyDP: margin -0.74, A won 43, lost 57, drew 0</title><rect x="414.0" y="1186" width="55.0" height="14" rx="3" class="neg"/><rect x="246" y="1182" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1197.0" font-size="12" font-variant-numeric="tabular-nums">-0.74</text>
+<text class="t2" x="238" y="1219.0" font-size="12" text-anchor="end">Greedy vs ShapleyDP-Win</text>
+<g><title>Greedy vs ShapleyDP-Win: margin -0.74, A won 36, lost 64, drew 0</title><rect x="414.0" y="1208" width="55.0" height="14" rx="3" class="neg"/><rect x="246" y="1204" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1219.0" font-size="12" font-variant-numeric="tabular-nums">-0.74</text>
+<text class="t2" x="238" y="1241.0" font-size="12" text-anchor="end">SM-MCTS vs Greedy</text>
+<g><title>SM-MCTS vs Greedy: margin +0.16, A won 44, lost 56, drew 0</title><rect x="469.0" y="1230" width="11.9" height="14" rx="3" class="pos"/><rect x="246" y="1226" width="446" height="22" fill="transparent"/></g>
+<text class="t1" x="698" y="1241.0" font-size="12" font-variant-numeric="tabular-nums">+0.16</text>
+</svg>
