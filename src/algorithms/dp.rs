@@ -4,11 +4,31 @@ use crate::algorithms::generate_allocations;
 use crate::game::simulation::{step, calculate_score};
 use std::collections::HashMap;
 
-/// State key for DP memoization
+/// State key for DP memoization.
+///
+/// Must contain everything that affects future transitions. Rope positions
+/// alone are not enough: switching costs stamina (even with fatigue off),
+/// stamina scales pulling force, and the per-turn switch limit makes the
+/// reachable allocations depend on where players currently stand.
+/// Player strengths are fixed for a game, so a solver is per-game.
+/// Assumes commander and spies are disabled.
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
-struct StateKey {
+pub(crate) struct StateKey {
     time: usize,
     positions: Vec<i32>,
+    assignments: Vec<usize>,
+    stamina_bits: Vec<u64>,
+}
+
+impl StateKey {
+    pub(crate) fn from_state(state: &GameState) -> Self {
+        Self {
+            time: state.time,
+            positions: state.ropes.iter().map(|r| r.position).collect(),
+            assignments: state.assignments.clone(),
+            stamina_bits: state.players.iter().map(|p| p.stamina.to_bits()).collect(),
+        }
+    }
 }
 
 /// Exact minimax DP solver for small state spaces
@@ -33,10 +53,7 @@ impl DpSolver {
     
     /// Solve the DP and return the optimal value for Team A from the current state
     pub fn solve(&mut self, state: &GameState) -> f64 {
-        let key = StateKey {
-            time: state.time,
-            positions: state.ropes.iter().map(|r| r.position).collect(),
-        };
+        let key = StateKey::from_state(state);
         
         if let Some(&value) = self.cache.get(&key) {
             return value;
@@ -93,10 +110,7 @@ impl DpSolver {
         // First ensure this state is solved
         self.solve(state);
         
-        let key = StateKey {
-            time: state.time,
-            positions: state.ropes.iter().map(|r| r.position).collect(),
-        };
+        let key = StateKey::from_state(state);
         
         self.policy_cache.get(&key).cloned()
     }
