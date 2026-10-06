@@ -26,6 +26,8 @@ fn main() {
             (StrategyType::ApproximateDp, StrategyType::ShapleyDp),
             (StrategyType::FatigueDp, StrategyType::ShapleyDp),
             (StrategyType::ShapleyDp, StrategyType::ShapleyDp),
+            (StrategyType::ShapleyDpWin, StrategyType::Greedy),
+            (StrategyType::ShapleyDpWin, StrategyType::ShapleyDp),
         ] {
             strategies.push((format!("[{}] {} vs {}", tag, a.name(), b.name()), a, b, size));
         }

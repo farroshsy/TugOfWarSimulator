@@ -4,7 +4,7 @@ use crate::strategies::{Strategy, GreedyStrategy, ReactiveStrategy};
 use crate::experiments::{StrategyType, GameSize};
 use crate::game::simulation::{step, calculate_score};
 
-const ALL_STRATEGIES: [StrategyType; 8] = [
+const ALL_STRATEGIES: [StrategyType; 9] = [
     StrategyType::Random,
     StrategyType::Greedy,
     StrategyType::Reactive,
@@ -13,11 +13,12 @@ const ALL_STRATEGIES: [StrategyType; 8] = [
     StrategyType::Dp,
     StrategyType::FatigueDp,
     StrategyType::ShapleyDp,
+    StrategyType::ShapleyDpWin,
 ];
 
 /// Exact DP solvers are exponential in game length; only offer them on the arena games.
 fn is_exact_dp(strategy: StrategyType) -> bool {
-    matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp | StrategyType::ShapleyDp)
+    matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp | StrategyType::ShapleyDp | StrategyType::ShapleyDpWin)
 }
 
 pub struct TugOfWarApp {

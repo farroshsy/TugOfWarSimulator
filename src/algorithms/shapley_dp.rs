@@ -14,22 +14,57 @@ use std::collections::HashMap;
 /// that matrix game, which may require mixed (randomized) strategies.
 /// See docs/research-solution-methods.md, section 2.
 pub struct ShapleyDpSolver {
+    objective: Objective,
     cache: HashMap<StateKey, MatrixGameSolution>,
     allocations_a: Vec<Allocation>,
     allocations_b: Vec<Allocation>,
 }
 
+/// What Team A's terminal payoff is (Team B gets the negative).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Objective {
+    /// Final score differential A - B. Maximizes the expected margin.
+    ScoreDifferential,
+    /// +1 win, 0 draw, -1 loss. Maximizes P(win) - P(loss).
+    WinProbability,
+}
+
+impl Objective {
+    fn terminal_value(&self, state: &GameState) -> f64 {
+        let score = calculate_score(state);
+        let diff = (score.team_a - score.team_b) as f64;
+        match self {
+            Objective::ScoreDifferential => diff,
+            // Not f64::signum: it maps 0.0 to 1.0, which would count draws as wins.
+            Objective::WinProbability => {
+                if diff > 0.0 {
+                    1.0
+                } else if diff < 0.0 {
+                    -1.0
+                } else {
+                    0.0
+                }
+            }
+        }
+    }
+}
+
 impl ShapleyDpSolver {
     pub fn new(state: &GameState) -> Self {
+        Self::with_objective(state, Objective::ScoreDifferential)
+    }
+
+    pub fn with_objective(state: &GameState, objective: Objective) -> Self {
         let ropes = state.ropes.len();
         Self {
+            objective,
             cache: HashMap::new(),
             allocations_a: generate_allocations(state.get_team_player_count(Team::A), ropes),
             allocations_b: generate_allocations(state.get_team_player_count(Team::B), ropes),
         }
     }
 
-    /// Game value for Team A (score differential A - B) under optimal mixed play.
+    /// Game value for Team A under optimal mixed play, in units of the objective.
     pub fn solve(&mut self, state: &GameState) -> f64 {
         self.stage(state).value
     }
@@ -47,9 +82,8 @@ impl ShapleyDpSolver {
 
     fn compute(&mut self, state: &GameState) -> MatrixGameSolution {
         if state.finished() {
-            let score = calculate_score(state);
             return MatrixGameSolution {
-                value: (score.team_a - score.team_b) as f64,
+                value: self.objective.terminal_value(state),
                 row_strategy: vec![],
                 col_strategy: vec![],
             };
@@ -87,13 +121,19 @@ impl ShapleyDpSolver {
 /// Plays the Shapley DP mixed strategy for either team, sampling an
 /// allocation each turn with a seeded RNG.
 pub struct ShapleyDpStrategy {
+    objective: Objective,
     solver: Option<ShapleyDpSolver>,
     rng: rand::rngs::StdRng,
 }
 
 impl ShapleyDpStrategy {
     pub fn new(seed: u64) -> Self {
+        Self::with_objective(seed, Objective::ScoreDifferential)
+    }
+
+    pub fn with_objective(seed: u64, objective: Objective) -> Self {
         Self {
+            objective,
             solver: None,
             rng: rand::rngs::StdRng::seed_from_u64(seed),
         }
@@ -103,7 +143,8 @@ impl ShapleyDpStrategy {
 impl Strategy for ShapleyDpStrategy {
     fn decide(&mut self, state: &GameState, team: Team) -> TeamAction {
         // Solver is built on first use: it needs the game's team sizes.
-        let solver = self.solver.get_or_insert_with(|| ShapleyDpSolver::new(state));
+        let objective = self.objective;
+        let solver = self.solver.get_or_insert_with(|| ShapleyDpSolver::with_objective(state, objective));
         let stage = solver.stage(state);
         let probabilities = match team {
             Team::A => stage.row_strategy.clone(),
@@ -129,7 +170,10 @@ impl Strategy for ShapleyDpStrategy {
     }
 
     fn name(&self) -> &str {
-        "ShapleyDP"
+        match self.objective {
+            Objective::ScoreDifferential => "ShapleyDP",
+            Objective::WinProbability => "ShapleyDP-Win",
+        }
     }
 }
 
@@ -177,6 +221,32 @@ mod tests {
             assert!((sum - 1.0).abs() < 1e-6);
             assert!(strategy.iter().all(|&p| p >= -1e-9));
         }
+    }
+
+    #[test]
+    fn forced_win_implies_score_value_has_same_sign() {
+        // If one team can guarantee a win (win-objective value is +/-1), its
+        // equilibrium strategy guarantees a strictly positive margin for it
+        // in every outcome, so the score-objective value has the same sign.
+        use crate::game::create_arena_game;
+        use rand::{Rng, SeedableRng};
+        let mut forced = 0;
+        // Seed 1: A forces a win; seed 2: B forces a win.
+        for seed in [1u64, 2] {
+            let mut state = create_arena_game();
+            let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+            for p in &mut state.players {
+                p.strength *= 1.0 + rng.gen_range(-0.2..=0.2);
+            }
+            let win = ShapleyDpSolver::with_objective(&state, Objective::WinProbability).solve(&state);
+            let score = ShapleyDpSolver::new(&state).solve(&state);
+            assert!((-1.0..=1.0).contains(&win));
+            if (win.abs() - 1.0).abs() < 1e-9 {
+                forced += 1;
+                assert!(score * win > 0.0, "seed {}: win {} score {}", seed, win, score);
+            }
+        }
+        assert_eq!(forced, 2);
     }
 
     #[test]

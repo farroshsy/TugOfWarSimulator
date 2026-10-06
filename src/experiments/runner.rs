@@ -32,6 +32,8 @@ pub enum StrategyType {
     ApproximateDp,
     /// Simultaneous-move (Shapley) DP with mixed strategies. Plays either team.
     ShapleyDp,
+    /// Shapley DP maximizing P(win) - P(loss) instead of score margin.
+    ShapleyDpWin,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -209,6 +211,10 @@ impl StrategyType {
             StrategyType::FatigueDp => Box::new(crate::algorithms::FatigueDpStrategy::for_teams(people_a, people_b, ropes, 10)),
             StrategyType::ApproximateDp => Box::new(crate::algorithms::ApproximateDpStrategy::new(people_a, ropes, 3, 4)),
             StrategyType::ShapleyDp => Box::new(crate::algorithms::ShapleyDpStrategy::new(seed)),
+            StrategyType::ShapleyDpWin => Box::new(crate::algorithms::ShapleyDpStrategy::with_objective(
+                seed,
+                crate::algorithms::Objective::WinProbability,
+            )),
         }
     }
     
@@ -222,6 +228,7 @@ impl StrategyType {
             StrategyType::FatigueDp => "FatigueDP",
             StrategyType::ApproximateDp => "ApproxDP",
             StrategyType::ShapleyDp => "ShapleyDP",
+            StrategyType::ShapleyDpWin => "ShapleyDP-Win",
         }
     }
 }
