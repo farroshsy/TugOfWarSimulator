@@ -2,9 +2,10 @@ use crate::game::{GameState, Team};
 use crate::strategies::{Strategy, TeamAction, allocation_to_action, Allocation};
 use crate::algorithms::{generate_allocations, solve_matrix_game, MatrixGameSolution};
 use crate::algorithms::dp::StateKey;
-use crate::game::simulation::{step, calculate_score};
+use crate::game::simulation::{step_outcomes, calculate_score};
 use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Simultaneous-move DP (Shapley, 1953).
 ///
@@ -16,8 +17,10 @@ use std::collections::HashMap;
 pub struct ShapleyDpSolver {
     objective: Objective,
     cache: HashMap<StateKey, MatrixGameSolution>,
-    allocations_a: Vec<Allocation>,
-    allocations_b: Vec<Allocation>,
+    // Arc: the recursive solve needs &mut self, so the loops hold cheap
+    // shared handles instead of cloning the allocation lists at every state.
+    allocations_a: Arc<[Allocation]>,
+    allocations_b: Arc<[Allocation]>,
 }
 
 /// What Team A's terminal payoff is (Team B gets the negative).
@@ -59,8 +62,8 @@ impl ShapleyDpSolver {
         Self {
             objective,
             cache: HashMap::new(),
-            allocations_a: generate_allocations(state.get_team_player_count(Team::A), ropes),
-            allocations_b: generate_allocations(state.get_team_player_count(Team::B), ropes),
+            allocations_a: generate_allocations(state.get_team_player_count(Team::A), ropes).into(),
+            allocations_b: generate_allocations(state.get_team_player_count(Team::B), ropes).into(),
         }
     }
 
@@ -89,17 +92,19 @@ impl ShapleyDpSolver {
             };
         }
 
-        let allocations_a = self.allocations_a.clone();
-        let allocations_b = self.allocations_b.clone();
+        let allocations_a = Arc::clone(&self.allocations_a);
+        let allocations_b = Arc::clone(&self.allocations_b);
         let mut payoff = vec![vec![0.0; allocations_b.len()]; allocations_a.len()];
 
         for (i, allocation_a) in allocations_a.iter().enumerate() {
+            let action_a = allocation_to_action(state, Team::A, &allocation_a.counts);
             for (j, allocation_b) in allocations_b.iter().enumerate() {
-                let mut next_state = state.clone();
-                let action_a = allocation_to_action(&next_state, Team::A, &allocation_a.counts);
-                let action_b = allocation_to_action(&next_state, Team::B, &allocation_b.counts);
-                step(&mut next_state, &action_a, &action_b);
-                payoff[i][j] = self.solve(&next_state);
+                let action_b = allocation_to_action(state, Team::B, &allocation_b.counts);
+                // Expected value over chance outcomes (one outcome if deterministic).
+                payoff[i][j] = step_outcomes(state, &action_a, &action_b)
+                    .into_iter()
+                    .map(|(p, next_state)| p * self.solve(&next_state))
+                    .sum();
             }
         }
 
@@ -247,6 +252,16 @@ mod tests {
             }
         }
         assert_eq!(forced, 2);
+    }
+
+    #[test]
+    fn noise_makes_win_probability_fractional() {
+        // Deterministic arena: outcome is forced (value exactly -1, 0 or 1).
+        // With stochastic physics the stronger team can still lose.
+        use crate::game::create_noisy_uneven_arena_game;
+        let state = create_noisy_uneven_arena_game();
+        let win = ShapleyDpSolver::with_objective(&state, Objective::WinProbability).solve(&state);
+        assert!(win > 0.0 && win < 1.0, "{}", win);
     }
 
     #[test]

@@ -1,9 +1,13 @@
 use eframe::egui;
-use crate::game::{GameState, Team, create_default_game, create_small_game, create_arena_game, create_uneven_arena_game};
+use crate::game::{
+    GameState, Team, create_default_game, create_small_game, create_arena_game, create_uneven_arena_game,
+    create_noisy_arena_game, create_noisy_uneven_arena_game,
+};
 use crate::strategies::{Strategy, GreedyStrategy, ReactiveStrategy};
 use crate::experiments::{StrategyType, GameSize};
 use crate::algorithms::ShapleyDpSolver;
-use crate::game::simulation::{step, calculate_score};
+use crate::game::simulation::{step_with_rng, calculate_score};
+use rand::SeedableRng;
 
 const ALL_STRATEGIES: [StrategyType; 10] = [
     StrategyType::Random,
@@ -20,7 +24,14 @@ const ALL_STRATEGIES: [StrategyType; 10] = [
 
 /// Exact DP solvers are exponential in game length; only offer them on the arena games.
 fn supports_exact_dp(size: GameSize) -> bool {
-    matches!(size, GameSize::Arena | GameSize::UnevenArena)
+    matches!(
+        size,
+        GameSize::Arena | GameSize::UnevenArena | GameSize::NoisyArena | GameSize::NoisyUnevenArena
+    )
+}
+
+fn is_stochastic(size: GameSize) -> bool {
+    matches!(size, GameSize::NoisyArena | GameSize::NoisyUnevenArena)
 }
 
 /// Rows for the DP Inspector: (allocation, probability) for a team's
@@ -50,7 +61,10 @@ fn is_exact_dp(strategy: StrategyType) -> bool {
 /// Exact DP is exponential in game length; SM-MCTS takes ~1s per turn on
 /// the default game (1000 playouts of up to 60 turns with 24 players).
 fn strategy_allowed(strategy: StrategyType, size: GameSize) -> bool {
-    if is_exact_dp(strategy) {
+    if matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp) && is_stochastic(size) {
+        // These solvers assume deterministic physics.
+        false
+    } else if is_exact_dp(strategy) {
         supports_exact_dp(size)
     } else if strategy == StrategyType::SmMcts {
         size != GameSize::Default
@@ -76,6 +90,8 @@ pub struct TugOfWarApp {
     show_inspector: bool,
     // Built on demand for the current game; cleared on reset.
     inspector_solver: Option<ShapleyDpSolver>,
+    // Samples stochastic rope movement; separate from strategies' RNGs.
+    physics_rng: rand::rngs::StdRng,
 }
 
 impl Default for TugOfWarApp {
@@ -94,6 +110,7 @@ impl Default for TugOfWarApp {
             state_size: GameSize::Default,
             show_inspector: false,
             inspector_solver: None,
+            physics_rng: rand::rngs::StdRng::seed_from_u64(42),
         }
     }
 }
@@ -189,7 +206,14 @@ impl eframe::App for TugOfWarApp {
                     
                     ui.label("Game Size:");
 
-                    for size in [GameSize::Arena, GameSize::UnevenArena, GameSize::Small, GameSize::Default] {
+                    for size in [
+                        GameSize::Arena,
+                        GameSize::UnevenArena,
+                        GameSize::NoisyArena,
+                        GameSize::NoisyUnevenArena,
+                        GameSize::Small,
+                        GameSize::Default,
+                    ] {
                         let ok = strategy_allowed(self.strategy_a, size) && strategy_allowed(self.strategy_b, size);
                         ui.add_enabled_ui(ok, |ui| {
                             ui.radio_value(&mut self.game_size, size, size.name())
@@ -243,7 +267,7 @@ impl TugOfWarApp {
         let action_a = self.strategy_a_impl.as_mut().unwrap().decide(&self.state, Team::A);
         let action_b = self.strategy_b_impl.as_mut().unwrap().decide(&self.state, Team::B);
         
-        step(&mut self.state, &action_a, &action_b);
+        step_with_rng(&mut self.state, &action_a, &action_b, &mut self.physics_rng);
     }
     
     fn reset_game(&mut self) {
@@ -252,6 +276,8 @@ impl TugOfWarApp {
         self.state = match self.game_size {
             GameSize::Arena => create_arena_game(),
             GameSize::UnevenArena => create_uneven_arena_game(),
+            GameSize::NoisyArena => create_noisy_arena_game(),
+            GameSize::NoisyUnevenArena => create_noisy_uneven_arena_game(),
             GameSize::Small => create_small_game(),
             GameSize::Default => create_default_game(),
         };
@@ -353,6 +379,8 @@ mod tests {
         assert!(strategy_allowed(StrategyType::SmMcts, GameSize::Small));
         assert!(!strategy_allowed(StrategyType::SmMcts, GameSize::Default));
         assert!(strategy_allowed(StrategyType::Greedy, GameSize::Default));
+        assert!(strategy_allowed(StrategyType::ShapleyDp, GameSize::NoisyArena));
+        assert!(!strategy_allowed(StrategyType::Dp, GameSize::NoisyArena));
     }
 
     #[test]

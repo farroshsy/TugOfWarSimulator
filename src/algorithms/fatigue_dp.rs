@@ -3,6 +3,7 @@ use crate::strategies::{Strategy, TeamAction, allocation_to_action, Allocation};
 use crate::algorithms::generate_allocations;
 use crate::game::simulation::{step, calculate_score};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Fatigue-aware DP state with compressed energy representation
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
@@ -16,8 +17,9 @@ struct FatigueStateKey {
 /// Fatigue-aware DP solver with compressed energy state
 pub struct FatigueDpSolver {
     cache: HashMap<FatigueStateKey, f64>,
-    allocations_a: Vec<Allocation>,
-    allocations_b: Vec<Allocation>,
+    // Arc: cheap to hold across the recursive &mut self calls.
+    allocations_a: Arc<[Allocation]>,
+    allocations_b: Arc<[Allocation]>,
     policy_cache: HashMap<FatigueStateKey, Allocation>,
     energy_buckets: u8,  // Number of energy discretization buckets
 }
@@ -31,8 +33,8 @@ impl FatigueDpSolver {
     pub fn for_teams(people_a: usize, people_b: usize, ropes: usize, energy_buckets: u8) -> Self {
         Self {
             cache: HashMap::new(),
-            allocations_a: generate_allocations(people_a, ropes),
-            allocations_b: generate_allocations(people_b, ropes),
+            allocations_a: generate_allocations(people_a, ropes).into(),
+            allocations_b: generate_allocations(people_b, ropes).into(),
             policy_cache: HashMap::new(),
             energy_buckets,
         }
@@ -86,13 +88,13 @@ impl FatigueDpSolver {
         let mut best_value = f64::NEG_INFINITY;
         let mut best_allocation = None;
         
-        let allocations_a = self.allocations_a.clone();
-        let allocations_b = self.allocations_b.clone();
+        let allocations_a = Arc::clone(&self.allocations_a);
+        let allocations_b = Arc::clone(&self.allocations_b);
         
-        for allocation_a in &allocations_a {
+        for allocation_a in allocations_a.iter() {
             let mut worst_value = f64::INFINITY;
             
-            for allocation_b in &allocations_b {
+            for allocation_b in allocations_b.iter() {
                 let mut next_state = state.clone();
                 
                 let action_a = allocation_to_action(&next_state, Team::A, &allocation_a.counts);

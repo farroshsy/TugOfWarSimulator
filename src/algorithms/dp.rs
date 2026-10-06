@@ -3,6 +3,7 @@ use crate::strategies::{Strategy, TeamAction, allocation_to_action, Allocation};
 use crate::algorithms::generate_allocations;
 use crate::game::simulation::{step, calculate_score};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// State key for DP memoization.
 ///
@@ -34,8 +35,9 @@ impl StateKey {
 /// Exact minimax DP solver for small state spaces
 pub struct DpSolver {
     cache: HashMap<StateKey, f64>,
-    allocations_a: Vec<Allocation>,
-    allocations_b: Vec<Allocation>,
+    // Arc: cheap to hold across the recursive &mut self calls.
+    allocations_a: Arc<[Allocation]>,
+    allocations_b: Arc<[Allocation]>,
     policy_cache: HashMap<StateKey, Allocation>, // Store optimal actions
 }
 
@@ -48,8 +50,8 @@ impl DpSolver {
     pub fn for_teams(people_a: usize, people_b: usize, ropes: usize) -> Self {
         Self {
             cache: HashMap::new(),
-            allocations_a: generate_allocations(people_a, ropes),
-            allocations_b: generate_allocations(people_b, ropes),
+            allocations_a: generate_allocations(people_a, ropes).into(),
+            allocations_b: generate_allocations(people_b, ropes).into(),
             policy_cache: HashMap::new(),
         }
     }
@@ -72,16 +74,15 @@ impl DpSolver {
         let mut best_value = f64::NEG_INFINITY;
         let mut best_allocation = None;
         
-        // Clone allocations to avoid borrowing issues
-        let allocations_a = self.allocations_a.clone();
-        let allocations_b = self.allocations_b.clone();
+        let allocations_a = Arc::clone(&self.allocations_a);
+        let allocations_b = Arc::clone(&self.allocations_b);
         
         // Team A chooses allocation to maximize
-        for allocation_a in &allocations_a {
+        for allocation_a in allocations_a.iter() {
             let mut worst_value = f64::INFINITY;
             
             // Team B chooses allocation to minimize Team A's result
-            for allocation_b in &allocations_b {
+            for allocation_b in allocations_b.iter() {
                 let mut next_state = state.clone();
                 
                 let action_a = allocation_to_action(&next_state, Team::A, &allocation_a.counts);
@@ -231,8 +232,6 @@ fn format_number(n: u64) -> String {
 /// DP Strategy that uses the exact solver
 pub struct DpStrategy {
     solver: DpSolver,
-    people_per_team: usize,
-    ropes: usize,
 }
 
 impl DpStrategy {
@@ -243,8 +242,6 @@ impl DpStrategy {
     pub fn for_teams(people_a: usize, people_b: usize, ropes: usize) -> Self {
         Self {
             solver: DpSolver::for_teams(people_a, people_b, ropes),
-            people_per_team: people_a,
-            ropes,
         }
     }
     

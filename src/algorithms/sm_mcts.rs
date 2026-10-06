@@ -1,7 +1,7 @@
 use crate::game::{GameState, Team};
 use crate::strategies::{Strategy, TeamAction, allocation_to_action, Allocation};
 use crate::algorithms::generate_allocations;
-use crate::game::simulation::{step, calculate_score};
+use crate::game::simulation::{step_with_rng, calculate_score};
 use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
 
@@ -26,7 +26,9 @@ struct Node {
     regrets_b: Vec<f64>,
     strategy_sum_a: Vec<f64>,
     strategy_sum_b: Vec<f64>,
-    children: HashMap<(usize, usize), usize>,
+    /// Keyed by both teams' actions and the resulting rope positions, so
+    /// different chance outcomes of the same joint action get their own node.
+    children: HashMap<(usize, usize, Vec<i32>), usize>,
 }
 
 impl Node {
@@ -133,13 +135,14 @@ impl SmMcts {
 
         self.apply(&mut state, i, j);
 
-        let u = match self.nodes[node].children.get(&(i, j)).copied() {
+        let key = (i, j, state.ropes.iter().map(|r| r.position).collect());
+        let u = match self.nodes[node].children.get(&key).copied() {
             Some(child) => self.iterate(child, state),
             None => {
                 // Expand one node per iteration, then estimate by random playout.
                 let child = self.nodes.len();
                 self.nodes.push(Node::new(self.allocations_a.len(), self.allocations_b.len()));
-                self.nodes[node].children.insert((i, j), child);
+                self.nodes[node].children.insert(key, child);
                 self.rollout(state)
             }
         };
@@ -170,10 +173,12 @@ impl SmMcts {
         score_differential(&state)
     }
 
-    fn apply(&self, state: &mut GameState, i: usize, j: usize) {
+    /// Step with sampled chance outcomes, using the search's own RNG (never
+    /// the real game's), so the search cannot see the actual future rolls.
+    fn apply(&mut self, state: &mut GameState, i: usize, j: usize) {
         let action_a = allocation_to_action(state, Team::A, &self.allocations_a[i].counts);
         let action_b = allocation_to_action(state, Team::B, &self.allocations_b[j].counts);
-        step(state, &action_a, &action_b);
+        step_with_rng(state, &action_a, &action_b, &mut self.rng);
     }
 }
 

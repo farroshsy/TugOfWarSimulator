@@ -45,6 +45,20 @@ fn main() {
         }
     }
     
+    // Stochastic physics: the stronger team can lose, so maximizing win
+    // probability (ShapleyDP-Win) and expected margin (ShapleyDP) can differ.
+    for (size, tag) in [(GameSize::NoisyUnevenArena, "noisy 3v2"), (GameSize::NoisyArena, "noisy 3v3")] {
+        for (a, b) in [
+            (StrategyType::ShapleyDp, StrategyType::Greedy),
+            (StrategyType::ShapleyDpWin, StrategyType::Greedy),
+            (StrategyType::Greedy, StrategyType::ShapleyDp),
+            (StrategyType::Greedy, StrategyType::ShapleyDpWin),
+            (StrategyType::SmMcts, StrategyType::Greedy),
+        ] {
+            strategies.push((format!("[{}] {} vs {}", tag, a.name(), b.name()), a, b, size));
+        }
+    }
+    
     let mut all_results = Vec::new();
     
     for (name, strategy_a, strategy_b, game_size) in strategies {

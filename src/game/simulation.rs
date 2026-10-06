@@ -1,5 +1,6 @@
 use crate::game::{GameState, Team, PlayerMode};
-use crate::game::physics::{update_rope_positions, DefaultPhysicsModel};
+use crate::game::physics::{update_rope_positions, DefaultPhysicsModel, calculate_team_force, contest_outcomes};
+use rand::Rng;
 use crate::strategies::TeamAction;
 
 #[derive(Clone, Debug)]
@@ -177,16 +178,103 @@ pub fn apply_spy_behavior(state: &mut GameState) {
     state.rebuild_rope_counts();
 }
 
-/// Execute one simulation step
+/// Execute one simulation step (deterministic physics only).
+///
+/// Panics if the rules use stochastic physics: use `step_with_rng` to
+/// sample, or `step_outcomes` to enumerate outcomes with probabilities.
 pub fn step(
     state: &mut GameState,
     action_a: &TeamAction,
     action_b: &TeamAction,
 ) {
+    assert!(
+        state.rules.contest_decisiveness.is_none(),
+        "stochastic physics: use step_with_rng or step_outcomes"
+    );
     if state.finished() {
         return;
     }
+    apply_actions(state, action_a, action_b);
     
+    // Calculate and apply rope movement
+    let physics = DefaultPhysicsModel::new(
+        state.rules.use_weight_threshold,
+        state.rules.movement_scale,
+    );
+    update_rope_positions(state, &physics);
+    
+    end_turn(state);
+}
+
+/// Execute one step, sampling stochastic rope movement with `rng`.
+/// Identical to `step` for deterministic physics.
+pub fn step_with_rng(
+    state: &mut GameState,
+    action_a: &TeamAction,
+    action_b: &TeamAction,
+    rng: &mut impl Rng,
+) {
+    if state.rules.contest_decisiveness.is_none() {
+        step(state, action_a, action_b);
+        return;
+    }
+    let mut outcomes = step_outcomes(state, action_a, action_b);
+    let r: f64 = rng.gen();
+    let mut cumulative = 0.0;
+    let last = outcomes.len() - 1;
+    for (i, (p, _)) in outcomes.iter().enumerate() {
+        cumulative += p;
+        if r < cumulative || i == last {
+            *state = outcomes.swap_remove(i).1;
+            return;
+        }
+    }
+}
+
+/// All possible next states with their probabilities. One outcome with
+/// probability 1 for deterministic physics; for stochastic physics, the
+/// product of each rope's independent contest outcomes.
+pub fn step_outcomes(
+    state: &GameState,
+    action_a: &TeamAction,
+    action_b: &TeamAction,
+) -> Vec<(f64, GameState)> {
+    let Some(decisiveness) = state.rules.contest_decisiveness else {
+        let mut next = state.clone();
+        step(&mut next, action_a, action_b);
+        return vec![(1.0, next)];
+    };
+    if state.finished() {
+        return vec![(1.0, state.clone())];
+    }
+    let mut base = state.clone();
+    apply_actions(&mut base, action_a, action_b);
+    
+    let mut outcomes = vec![(1.0, base.clone())];
+    for rope in 0..base.ropes.len() {
+        let force_a = calculate_team_force(&base, Team::A, rope);
+        let force_b = calculate_team_force(&base, Team::B, rope);
+        let moves = contest_outcomes(force_a, force_b, decisiveness);
+        outcomes = outcomes
+            .into_iter()
+            .flat_map(|(p, s)| {
+                moves.iter().map(move |&(movement, q)| {
+                    let mut next = s.clone();
+                    let r = &mut next.ropes[rope];
+                    r.position = (r.position + movement).clamp(r.min_position, r.max_position);
+                    (p * q, next)
+                })
+            })
+            .collect();
+    }
+    for (_, next) in outcomes.iter_mut() {
+        end_turn(next);
+    }
+    outcomes
+}
+
+/// Everything in a step before rope movement.
+fn apply_actions(state: &mut GameState, action_a: &TeamAction, action_b: &TeamAction) {
     // Execute pending commands
     execute_pending_commands(state);
     
@@ -196,17 +284,70 @@ pub fn step(
     
     // Apply spy behavior
     apply_spy_behavior(state);
-    
-    // Calculate and apply rope movement
-    let physics = DefaultPhysicsModel::new(
-        state.rules.use_weight_threshold,
-        state.rules.movement_scale,
-    );
-    update_rope_positions(state, &physics);
-    
+}
+
+/// Everything in a step after rope movement.
+fn end_turn(state: &mut GameState) {
     // Update fatigue
     update_fatigue(state);
     
     // Advance time
     state.time += 1;
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::create_noisy_arena_game;
+    use crate::strategies::allocation_to_action;
+    use rand::SeedableRng;
+
+    fn split_actions(state: &GameState) -> (TeamAction, TeamAction) {
+        // A all on rope 1, B split: both ropes are contested or pulled.
+        (
+            allocation_to_action(state, Team::A, &[0, 3]),
+            allocation_to_action(state, Team::B, &[1, 2]),
+        )
+    }
+
+    #[test]
+    fn stochastic_outcomes_are_a_distribution() {
+        let state = create_noisy_arena_game();
+        let (a, b) = split_actions(&state);
+        let outcomes = step_outcomes(&state, &a, &b);
+        // Rope 0: only B pulls (certain). Rope 1: contested (2 outcomes).
+        assert_eq!(outcomes.len(), 2);
+        let total: f64 = outcomes.iter().map(|(p, _)| p).sum();
+        assert!((total - 1.0).abs() < 1e-12);
+        assert!(outcomes.iter().all(|(_, s)| s.time == 1));
+    }
+
+    #[test]
+    fn sampled_step_matches_outcome_frequencies() {
+        let state = create_noisy_arena_game();
+        let (a, b) = split_actions(&state);
+        let outcomes = step_outcomes(&state, &a, &b);
+        let p_rope1_toward_a: f64 = outcomes
+            .iter()
+            .filter(|(_, s)| s.ropes[1].position < 0)
+            .map(|(p, _)| p)
+            .sum();
+        let mut rng = rand::rngs::StdRng::seed_from_u64(3);
+        let n = 4000;
+        let hits = (0..n)
+            .filter(|_| {
+                let mut s = state.clone();
+                step_with_rng(&mut s, &a, &b, &mut rng);
+                s.ropes[1].position < 0
+            })
+            .count();
+        assert!((hits as f64 / n as f64 - p_rope1_toward_a).abs() < 0.03);
+    }
+
+    #[test]
+    #[should_panic(expected = "stochastic physics")]
+    fn deterministic_step_rejects_stochastic_rules() {
+        let mut state = create_noisy_arena_game();
+        let (a, b) = split_actions(&state);
+        step(&mut state, &a, &b);
+    }
 }

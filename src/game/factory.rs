@@ -130,3 +130,23 @@ pub fn create_uneven_arena_game() -> GameState {
     state.rebuild_rope_counts();
     state
 }
+
+/// Contest decisiveness used by the noisy arena games.
+pub const NOISY_ARENA_DECISIVENESS: f64 = 2.0;
+
+/// Arena game with stochastic (Tullock contest) physics: every turn each
+/// pulled rope moves toward a team with probability proportional to its
+/// force squared. Unlike the deterministic arena, the stronger team can lose,
+/// so win probability is a meaningful objective.
+pub fn create_noisy_arena_game() -> GameState {
+    let mut state = create_arena_game();
+    state.rules.contest_decisiveness = Some(NOISY_ARENA_DECISIVENESS);
+    state
+}
+
+/// Noisy arena with uneven teams (3 for A, 2 for B).
+pub fn create_noisy_uneven_arena_game() -> GameState {
+    let mut state = create_uneven_arena_game();
+    state.rules.contest_decisiveness = Some(NOISY_ARENA_DECISIVENESS);
+    state
+}

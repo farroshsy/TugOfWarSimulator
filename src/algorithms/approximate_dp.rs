@@ -1,7 +1,7 @@
 use crate::game::{GameState, Team};
 use crate::strategies::{Strategy, TeamAction, allocation_to_action, Allocation};
 use crate::algorithms::generate_allocations;
-use crate::game::simulation::{step, calculate_score};
+use crate::game::simulation::{step_outcomes, calculate_score};
 use std::cmp::Ordering;
 
 /// Approximate DP using limited horizon planning
@@ -25,7 +25,10 @@ impl LimitedHorizonDp {
     /// Returns the value from `team`'s perspective (own score minus opponent's).
     pub fn solve_limited_horizon(&self, state: &GameState, team: Team) -> f64 {
         let allocations = generate_allocations(state.get_team_player_count(team), self.ropes);
-        
+        self.beam_search(state, team, &allocations)
+    }
+    
+    fn beam_search(&self, state: &GameState, team: Team, allocations: &[Allocation]) -> f64 {
         if state.finished() {
             return own_score_differential(state, team);
         }
@@ -37,7 +40,7 @@ impl LimitedHorizonDp {
             let mut next_beam = Vec::new();
             
             for (current_state, current_value) in beam {
-                for allocation in &allocations {
+                for allocation in allocations {
                     let mut next_state = current_state.clone();
                     let action = allocation_to_action(&next_state, team, &allocation.counts);
                     
@@ -82,7 +85,7 @@ impl LimitedHorizonDp {
             
             // Count this turn's score too, not only the turns after it.
             let value = own_score_differential(&test_state, team)
-                + self.solve_limited_horizon(&test_state, team);
+                + self.beam_search(&test_state, team, &allocations);
             
             if value > best_value {
                 best_value = value;
@@ -101,12 +104,19 @@ impl LimitedHorizonDp {
     }
 }
 
-/// `step` takes Team A's action first; order the actions by team.
+/// Step with the actions ordered by team (`step_outcomes` takes Team A's
+/// action first). With stochastic physics, follows the most likely outcome:
+/// a cheap heuristic that keeps the beam search deterministic.
 fn step_as(state: &mut GameState, team: Team, own: &TeamAction, opponent: &TeamAction) {
-    match team {
-        Team::A => step(state, own, opponent),
-        Team::B => step(state, opponent, own),
-    }
+    let outcomes = match team {
+        Team::A => step_outcomes(state, own, opponent),
+        Team::B => step_outcomes(state, opponent, own),
+    };
+    *state = outcomes
+        .into_iter()
+        .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal))
+        .expect("at least one outcome")
+        .1;
 }
 
 /// Score differential from `team`'s point of view.
@@ -116,35 +126,6 @@ fn own_score_differential(state: &GameState, team: Team) -> f64 {
     match team {
         Team::A => diff,
         Team::B => -diff,
-    }
-}
-
-/// Beam search state for priority queue
-#[derive(Clone, Debug)]
-struct BeamState {
-    state: GameState,
-    value: f64,
-    depth: usize,
-}
-
-impl PartialEq for BeamState {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
-}
-
-impl Eq for BeamState {}
-
-impl PartialOrd for BeamState {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for BeamState {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // Max-heap: reverse ordering
-        other.value.partial_cmp(&self.value).unwrap_or(Ordering::Equal)
     }
 }
 

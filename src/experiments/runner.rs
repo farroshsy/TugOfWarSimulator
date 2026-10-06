@@ -1,7 +1,10 @@
-use crate::game::{GameState, Team, create_arena_game, create_uneven_arena_game, create_small_game, create_default_game};
+use crate::game::{
+    GameState, Team, create_arena_game, create_uneven_arena_game, create_noisy_arena_game,
+    create_noisy_uneven_arena_game, create_small_game, create_default_game,
+};
 use rand::{Rng, SeedableRng};
 use crate::strategies::Strategy;
-use crate::game::simulation::{step, calculate_score};
+use crate::game::simulation::{step_with_rng, calculate_score};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -25,8 +28,10 @@ pub enum StrategyType {
     Reactive,
     FatigueAware,
     /// Sequential maximin DP. Plays Team A only (falls back to Greedy as B).
+    /// Deterministic physics only.
     Dp,
-    /// Fatigue-aware DP with compressed energy. Team A only.
+    /// Fatigue-aware DP with compressed energy. Team A only. Deterministic
+    /// physics only.
     FatigueDp,
     /// Limited-horizon DP. Plays either team.
     ApproximateDp,
@@ -45,6 +50,10 @@ pub enum GameSize {
     Arena,
     /// 3v2 arena; uneven teams, small enough for exact DP strategies.
     UnevenArena,
+    /// 3v3 arena with stochastic (contest) physics.
+    NoisyArena,
+    /// 3v2 arena with stochastic (contest) physics.
+    NoisyUnevenArena,
     Small,
     Default,
 }
@@ -127,6 +136,8 @@ impl ExperimentRunner {
                     let mut state = match config.game_size {
                         GameSize::Arena => create_arena_game(),
                         GameSize::UnevenArena => create_uneven_arena_game(),
+                        GameSize::NoisyArena => create_noisy_arena_game(),
+                        GameSize::NoisyUnevenArena => create_noisy_uneven_arena_game(),
                         GameSize::Small => create_small_game(),
                         GameSize::Default => create_default_game(),
                     };
@@ -135,11 +146,13 @@ impl ExperimentRunner {
                     let mut strategy_a = config.team_a_strategy.create(seed, &state);
                     let mut strategy_b = config.team_b_strategy.create(seed + 1, &state);
                     
-                    // Run the game
+                    // Run the game. Chance outcomes use their own RNG so
+                    // strategies cannot predict them.
+                    let mut physics_rng = rand::rngs::StdRng::seed_from_u64(seed ^ 0x9E37_79B9_7F4A_7C15);
                     while !state.finished() {
                         let action_a = strategy_a.decide(&state, Team::A);
                         let action_b = strategy_b.decide(&state, Team::B);
-                        step(&mut state, &action_a, &action_b);
+                        step_with_rng(&mut state, &action_a, &action_b, &mut physics_rng);
                     }
                     
                     // Collect results
@@ -243,6 +256,8 @@ impl GameSize {
         match self {
             GameSize::Arena => "Arena (3v3, 2 light ropes, 6 turns)",
             GameSize::UnevenArena => "Uneven Arena (3v2, 2 light ropes, 6 turns)",
+            GameSize::NoisyArena => "Noisy Arena (3v3, stochastic pulls)",
+            GameSize::NoisyUnevenArena => "Noisy Uneven Arena (3v2, stochastic pulls)",
             GameSize::Small => "Small (3v3, 2 ropes)",
             GameSize::Default => "Default (12v12, 3 ropes)",
         }

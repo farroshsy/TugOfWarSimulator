@@ -16,6 +16,12 @@ pub struct GameRules {
     // Physics model
     pub use_weight_threshold: bool,
     pub movement_scale: f64,
+    /// Stochastic physics (Tullock contest): each turn a pulled rope moves one
+    /// step toward A with probability F_A^r / (F_A^r + F_B^r), else toward B.
+    /// `r` is the decisiveness; larger r approaches the deterministic model.
+    /// None = deterministic weight-threshold physics.
+    #[serde(default)]
+    pub contest_decisiveness: Option<f64>,
     
     // Commander mechanics
     pub command_cooldown: usize,    // Minimum turns between commands
@@ -41,6 +47,7 @@ impl Default for GameRules {
             switching_stamina_cost: 2.0,
             use_weight_threshold: true,
             movement_scale: 1.0,
+            contest_decisiveness: None,
             command_cooldown: 3,
             command_delay: 1,
             fatigue_enabled: true,
@@ -62,6 +69,7 @@ impl GameRules {
             switching_stamina_cost: 1.0,
             use_weight_threshold: true,
             movement_scale: 1.0,
+            contest_decisiveness: None,
             command_cooldown: 2,
             command_delay: 1,
             fatigue_enabled: false,

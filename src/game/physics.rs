@@ -75,6 +75,22 @@ pub fn calculate_net_force(
     force_a - force_b
 }
 
+/// Possible movements of one rope this turn under stochastic (Tullock
+/// contest) physics, as (movement, probability). Positive = toward Team B
+/// territory, matching `calculate_movement`.
+pub fn contest_outcomes(force_a: f64, force_b: f64, decisiveness: f64) -> Vec<(i32, f64)> {
+    let a = force_a.max(0.0).powf(decisiveness);
+    let b = force_b.max(0.0).powf(decisiveness);
+    if a + b <= 0.0 {
+        return vec![(0, 1.0)];
+    }
+    let p_toward_a = a / (a + b);
+    [(-1, p_toward_a), (1, 1.0 - p_toward_a)]
+        .into_iter()
+        .filter(|&(_, p)| p > 0.0)
+        .collect()
+}
+
 /// Update rope positions based on forces
 pub fn update_rope_positions(state: &mut GameState, physics: &dyn PhysicsModel) {
     for i in 0..state.ropes.len() {
@@ -110,6 +126,17 @@ mod tests {
     fn stronger_team_b_pulls_rope_into_b_territory() {
         let physics = DefaultPhysicsModel::new(true, 1.0);
         assert_eq!(physics.calculate_movement(&rope(1.0), 5.0, 10.0), 1);
+    }
+
+    #[test]
+    fn contest_probabilities_follow_force_ratio() {
+        // r = 1: probability proportional to force.
+        let outcomes = contest_outcomes(30.0, 10.0, 1.0);
+        assert_eq!(outcomes, vec![(-1, 0.75), (1, 0.25)]);
+        // Unopposed team always wins the pull.
+        assert_eq!(contest_outcomes(5.0, 0.0, 2.0), vec![(-1, 1.0)]);
+        // Nobody pulling: rope stays.
+        assert_eq!(contest_outcomes(0.0, 0.0, 2.0), vec![(0, 1.0)]);
     }
 
     #[test]
