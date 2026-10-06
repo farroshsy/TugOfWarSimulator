@@ -1,10 +1,5 @@
-mod game;
-mod strategies;
-mod algorithms;
-mod experiments;
-mod ui;
-
 use eframe::egui;
+use tug_of_war::ui;
 
 fn main() {
     let options = eframe::NativeOptions {
