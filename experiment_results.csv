@@ -1,5 +1,5 @@
 strategy,wins,losses,draws,win_rate,average_score_differential
-Random vs Greedy,0,100,0,0.0000,-1.00
-Greedy vs Reactive,0,0,100,0.0000,0.00
-Reactive vs FatigueAware,0,0,100,0.0000,0.00
-FatigueAware vs Random,100,0,0,1.0000,1.00
+Random vs Greedy,1,99,0,0.0100,-0.96
+Greedy vs Reactive,24,26,50,0.2400,0.04
+Reactive vs FatigueAware,40,10,50,0.4000,0.42
+FatigueAware vs Random,97,3,0,0.9700,0.94

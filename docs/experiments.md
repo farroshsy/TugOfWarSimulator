@@ -14,6 +14,7 @@ ExperimentConfig {
     team_a_strategy: StrategyType,
     team_b_strategy: StrategyType,
     game_size: GameSize,
+    strength_variation: f64, // per-player strength scaled by seeded factor in [1-v, 1+v]; 0.0 = identical players
 }
 ```
 
@@ -47,6 +48,7 @@ let config = ExperimentConfig {
     team_a_strategy: StrategyType::Greedy,
     team_b_strategy: StrategyType::Reactive,
     game_size: GameSize::Default,
+    strength_variation: 0.2,
 };
 
 let runner = ExperimentRunner::new(config);

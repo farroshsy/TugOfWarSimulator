@@ -516,6 +516,7 @@ let config = ExperimentConfig {
     team_a_strategy: StrategyType::Greedy,
     team_b_strategy: StrategyType::Reactive,
     game_size: GameSize::Small,
+    strength_variation: 0.2,
 };
 
 let runner = ExperimentRunner::new(config);
@@ -548,17 +549,17 @@ Small game (for DP testing):
 
 > **Status:** Example output shown below. These numbers are illustrative and should not be interpreted as scientifically validated results unless accompanied by the corresponding experiment configuration, seed, model version, and reproducibility information.
 
-Example results from strategy comparison (100 games each):
+Example results from strategy comparison (small game, 100 games each, seed 42, `strength_variation: 0.2`):
 
 ```
 Strategy Comparison
 ====================
 Strategy                 Wins   Losses    Draws Win Rate  Avg Score
 --------                 ----   ------    ----- --------  ---------
-Random vs Greedy            0      100        0     0.0      -1.00
-Greedy vs Reactive          0        0      100     0.0       0.00
-Reactive vs FatigueAware        0        0      100     0.0       0.00
-FatigueAware vs Random      100        0        0   100.0       1.00
+Random vs Greedy            1       99        0     1.0      -0.96
+Greedy vs Reactive         24       26       50    24.0       0.04
+Reactive vs FatigueAware       40       10       50    40.0       0.42
+FatigueAware vs Random       97        3        0    97.0       0.94
 ```
 
 ---

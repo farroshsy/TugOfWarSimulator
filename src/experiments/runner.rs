@@ -1,4 +1,5 @@
-use crate::game::{Team, create_small_game, create_default_game};
+use crate::game::{GameState, Team, create_small_game, create_default_game};
+use rand::{Rng, SeedableRng};
 use crate::strategies::Strategy;
 use crate::game::simulation::{step, calculate_score};
 use std::sync::{Arc, Mutex};
@@ -12,6 +13,9 @@ pub struct ExperimentConfig {
     pub team_a_strategy: StrategyType,
     pub team_b_strategy: StrategyType,
     pub game_size: GameSize,
+    /// Each player's strength is scaled by a seeded random factor in
+    /// [1 - v, 1 + v] before the game starts. 0.0 = identical players.
+    pub strength_variation: f64,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -107,6 +111,7 @@ impl ExperimentRunner {
                         GameSize::Small => create_small_game(),
                         GameSize::Default => create_default_game(),
                     };
+                    apply_strength_variation(&mut state, config.strength_variation, seed);
                     
                     let mut strategy_a = config.team_a_strategy.create(seed);
                     let mut strategy_b = config.team_b_strategy.create(seed + 1);
@@ -164,6 +169,18 @@ impl ExperimentRunner {
     }
 }
 
+/// Scale every player's strength by a random factor in [1 - variation, 1 + variation].
+/// Deterministic for a given seed, so experiments stay reproducible.
+fn apply_strength_variation(state: &mut GameState, variation: f64, seed: u64) {
+    if variation <= 0.0 {
+        return;
+    }
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    for player in &mut state.players {
+        player.strength *= 1.0 + rng.gen_range(-variation..=variation);
+    }
+}
+
 impl StrategyType {
     pub fn create(&self, seed: u64) -> Box<dyn Strategy> {
         match self {
@@ -189,6 +206,41 @@ impl GameSize {
         match self {
             GameSize::Small => "Small (3v3, 2 ropes)",
             GameSize::Default => "Default (12v12, 3 ropes)",
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn strengths(variation: f64, seed: u64) -> Vec<f64> {
+        let mut state = create_small_game();
+        apply_strength_variation(&mut state, variation, seed);
+        state.players.iter().map(|p| p.strength).collect()
+    }
+
+    #[test]
+    fn zero_variation_leaves_strengths_unchanged() {
+        let base: Vec<f64> = create_small_game().players.iter().map(|p| p.strength).collect();
+        assert_eq!(strengths(0.0, 7), base);
+    }
+
+    #[test]
+    fn same_seed_gives_same_strengths() {
+        assert_eq!(strengths(0.2, 7), strengths(0.2, 7));
+    }
+
+    #[test]
+    fn different_seeds_give_different_strengths() {
+        assert_ne!(strengths(0.2, 7), strengths(0.2, 8));
+    }
+
+    #[test]
+    fn strengths_stay_within_variation_bounds() {
+        let base = create_small_game().players[0].strength;
+        for s in strengths(0.2, 7) {
+            assert!(s >= base * 0.8 && s <= base * 1.2);
         }
     }
 }

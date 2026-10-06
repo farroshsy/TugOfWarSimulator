@@ -24,6 +24,7 @@ fn main() {
             team_a_strategy: strategy_a,
             team_b_strategy: strategy_b,
             game_size: GameSize::Small, // Use small game for faster testing
+            strength_variation: 0.2,
         };
         
         let runner = ExperimentRunner::new(config);
