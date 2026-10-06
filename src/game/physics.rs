@@ -33,8 +33,10 @@ impl PhysicsModel for DefaultPhysicsModel {
         force_a: f64,
         force_b: f64,
     ) -> i32 {
-        let net_force = force_a - force_b;
-        
+        // Positions: negative = Team A territory, positive = Team B territory.
+        // So a stronger Team A must move the rope in the negative direction.
+        let net_force = force_b - force_a;
+
         let movement = if self.use_weight_threshold {
             if net_force > rope.weight {
                 self.movement_scale
@@ -86,5 +88,33 @@ pub fn update_rope_positions(state: &mut GameState, physics: &dyn PhysicsModel) 
         state.ropes[i].position = new_position
             .round()
             .clamp(rope.min_position as f64, rope.max_position as f64) as i32;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::Rope;
+
+    fn rope(weight: f64) -> Rope {
+        Rope::new(0, 0, -10, 10, weight, 1)
+    }
+
+    #[test]
+    fn stronger_team_a_pulls_rope_into_a_territory() {
+        let physics = DefaultPhysicsModel::new(true, 1.0);
+        assert_eq!(physics.calculate_movement(&rope(1.0), 10.0, 5.0), -1);
+    }
+
+    #[test]
+    fn stronger_team_b_pulls_rope_into_b_territory() {
+        let physics = DefaultPhysicsModel::new(true, 1.0);
+        assert_eq!(physics.calculate_movement(&rope(1.0), 5.0, 10.0), 1);
+    }
+
+    #[test]
+    fn net_force_within_weight_does_not_move_rope() {
+        let physics = DefaultPhysicsModel::new(true, 1.0);
+        assert_eq!(physics.calculate_movement(&rope(3.0), 10.0, 8.0), 0);
     }
 }

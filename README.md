@@ -555,10 +555,10 @@ Strategy Comparison
 ====================
 Strategy                 Wins   Losses    Draws Win Rate  Avg Score
 --------                 ----   ------    ----- --------  ---------
-Random vs Greedy          100        0        0   100.0       1.00
+Random vs Greedy            0      100        0     0.0      -1.00
 Greedy vs Reactive          0        0      100     0.0       0.00
 Reactive vs FatigueAware        0        0      100     0.0       0.00
-FatigueAware vs Random        0      100        0     0.0      -1.00
+FatigueAware vs Random      100        0        0   100.0       1.00
 ```
 
 ---
