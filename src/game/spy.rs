@@ -1,8 +1,7 @@
-use crate::game::{GameState, Team, PlayerId, RopeId};
-use rand::Rng;
+use crate::game::{GameState, Team, PlayerId};
 
 /// Spy behavior types
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SpyBehavior {
     /// Spy always acts against own team
     Deterministic,
@@ -41,11 +40,12 @@ impl SpySystem {
         self.hidden_spies.clear();
         self.known_spies.clear();
         
-        for player in &state.players {
+        let player_ids: Vec<PlayerId> = state.players.iter().map(|p| p.id).collect();
+        for player_id in player_ids {
             if rng.gen_bool(self.spy_probability) {
-                self.hidden_spies.push(player.id);
+                self.hidden_spies.push(player_id);
                 // Mark as spy in player (but this may be hidden from strategy)
-                if let Some(p) = state.players.get_mut(player.id) {
+                if let Some(p) = state.players.get_mut(player_id) {
                     p.role = crate::game::Role::Spy;
                 }
             }

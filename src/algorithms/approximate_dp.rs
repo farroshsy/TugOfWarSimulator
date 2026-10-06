@@ -2,7 +2,6 @@ use crate::game::{GameState, Team};
 use crate::strategies::{Strategy, TeamAction, allocation_to_action, Allocation};
 use crate::algorithms::generate_allocations;
 use crate::game::simulation::{step, calculate_score};
-use std::collections::BinaryHeap;
 use std::cmp::Ordering;
 
 /// Approximate DP using limited horizon planning

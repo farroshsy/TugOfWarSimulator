@@ -108,7 +108,7 @@ impl FatigueDpSolver {
         }
         
         if let Some(alloc) = best_allocation {
-            self.policy_cache.insert(key, alloc);
+            self.policy_cache.insert(key.clone(), alloc);
         }
         
         self.cache.insert(key, best_value);
