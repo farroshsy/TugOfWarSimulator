@@ -1,34 +1,23 @@
 use eframe::egui;
-use crate::game::{GameState, Team, create_default_game, create_small_game};
-use crate::strategies::{Strategy, RandomStrategy, GreedyStrategy, ReactiveStrategy, FatigueAwareStrategy};
+use crate::game::{GameState, Team, create_default_game, create_small_game, create_tiny_game};
+use crate::strategies::{Strategy, GreedyStrategy, ReactiveStrategy};
+use crate::experiments::{StrategyType, GameSize};
 use crate::game::simulation::{step, calculate_score};
 
-#[derive(Clone, Copy, PartialEq)]
-enum StrategyType {
-    Random,
-    Greedy,
-    Reactive,
-    FatigueAware,
-}
+const ALL_STRATEGIES: [StrategyType; 8] = [
+    StrategyType::Random,
+    StrategyType::Greedy,
+    StrategyType::Reactive,
+    StrategyType::FatigueAware,
+    StrategyType::ApproximateDp,
+    StrategyType::Dp,
+    StrategyType::FatigueDp,
+    StrategyType::ShapleyDp,
+];
 
-impl StrategyType {
-    fn name(&self) -> &str {
-        match self {
-            StrategyType::Random => "Random",
-            StrategyType::Greedy => "Greedy",
-            StrategyType::Reactive => "Reactive",
-            StrategyType::FatigueAware => "FatigueAware",
-        }
-    }
-    
-    fn create(&self, seed: u64) -> Box<dyn Strategy> {
-        match self {
-            StrategyType::Random => Box::new(RandomStrategy::new(seed)),
-            StrategyType::Greedy => Box::new(GreedyStrategy::new()),
-            StrategyType::Reactive => Box::new(ReactiveStrategy::new()),
-            StrategyType::FatigueAware => Box::new(FatigueAwareStrategy::new()),
-        }
-    }
+/// Exact DP solvers are exponential in game length; only offer them on the tiny game.
+fn is_exact_dp(strategy: StrategyType) -> bool {
+    matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp | StrategyType::ShapleyDp)
 }
 
 pub struct TugOfWarApp {
@@ -41,21 +30,6 @@ pub struct TugOfWarApp {
     strategy_b_impl: Option<Box<dyn Strategy>>,
     seed: u64,
     game_size: GameSize,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum GameSize {
-    Small,
-    Default,
-}
-
-impl GameSize {
-    fn name(&self) -> &str {
-        match self {
-            GameSize::Small => "Small (3v3, 2 ropes)",
-            GameSize::Default => "Default (12v12, 3 ropes)",
-        }
-    }
 }
 
 impl Default for TugOfWarApp {
@@ -140,15 +114,24 @@ impl eframe::App for TugOfWarApp {
                     ui.heading("Strategies");
                     ui.separator();
                     
+                    let tiny = self.game_size == GameSize::Tiny;
+                    
                     ui.label("Team A Strategy:");
-                    for strategy in [StrategyType::Random, StrategyType::Greedy, StrategyType::Reactive, StrategyType::FatigueAware] {
-                        ui.radio_value(&mut self.strategy_a, strategy, strategy.name());
+                    for strategy in ALL_STRATEGIES {
+                        ui.add_enabled_ui(tiny || !is_exact_dp(strategy), |ui| {
+                            ui.radio_value(&mut self.strategy_a, strategy, strategy.name())
+                                .on_disabled_hover_text("Exact DP: select Tiny game and Reset");
+                        });
                     }
                     
                     ui.label("Team B Strategy:");
-                    for strategy in [StrategyType::Random, StrategyType::Greedy, StrategyType::Reactive, StrategyType::FatigueAware] {
-                        ui.radio_value(&mut self.strategy_b, strategy, strategy.name());
+                    for strategy in ALL_STRATEGIES {
+                        ui.add_enabled_ui(tiny || !is_exact_dp(strategy), |ui| {
+                            ui.radio_value(&mut self.strategy_b, strategy, strategy.name())
+                                .on_disabled_hover_text("Exact DP: select Tiny game and Reset");
+                        });
                     }
+                    ui.small("DP and FatigueDP plan for Team A only (Greedy as B).");
                     
                     ui.separator();
                     
@@ -157,8 +140,12 @@ impl eframe::App for TugOfWarApp {
                     ui.separator();
                     
                     ui.label("Game Size:");
-                    for size in [GameSize::Small, GameSize::Default] {
-                        ui.radio_value(&mut self.game_size, size, size.name());
+                    let exact_dp_selected = is_exact_dp(self.strategy_a) || is_exact_dp(self.strategy_b);
+                    for size in [GameSize::Tiny, GameSize::Small, GameSize::Default] {
+                        ui.add_enabled_ui(size == GameSize::Tiny || !exact_dp_selected, |ui| {
+                            ui.radio_value(&mut self.game_size, size, size.name())
+                                .on_disabled_hover_text("Exact DP strategies need the Tiny game");
+                        });
                     }
                     
                     ui.separator();
@@ -195,10 +182,10 @@ impl TugOfWarApp {
         
         // Recreate strategies if needed
         if self.strategy_a_impl.is_none() || self.strategy_a_impl.as_ref().unwrap().name() != self.strategy_a.name() {
-            self.strategy_a_impl = Some(self.strategy_a.create(self.seed));
+            self.strategy_a_impl = Some(self.strategy_a.create(self.seed, &self.state));
         }
         if self.strategy_b_impl.is_none() || self.strategy_b_impl.as_ref().unwrap().name() != self.strategy_b.name() {
-            self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1));
+            self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1, &self.state));
         }
         
         let action_a = self.strategy_a_impl.as_mut().unwrap().decide(&self.state, Team::A);
@@ -209,12 +196,13 @@ impl TugOfWarApp {
     
     fn reset_game(&mut self) {
         self.state = match self.game_size {
+            GameSize::Tiny => create_tiny_game(),
             GameSize::Small => create_small_game(),
             GameSize::Default => create_default_game(),
         };
         self.running = false;
-        self.strategy_a_impl = Some(self.strategy_a.create(self.seed));
-        self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1));
+        self.strategy_a_impl = Some(self.strategy_a.create(self.seed, &self.state));
+        self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1, &self.state));
     }
     
     fn draw_arena(&mut self, ui: &mut egui::Ui) {

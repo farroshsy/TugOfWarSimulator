@@ -7,15 +7,25 @@ fn main() {
     
     // Test different strategy combinations
     let strategies = vec![
-        ("Random vs Greedy", StrategyType::Random, StrategyType::Greedy),
-        ("Greedy vs Reactive", StrategyType::Greedy, StrategyType::Reactive),
-        ("Reactive vs FatigueAware", StrategyType::Reactive, StrategyType::FatigueAware),
-        ("FatigueAware vs Random", StrategyType::FatigueAware, StrategyType::Random),
+        ("Random vs Greedy", StrategyType::Random, StrategyType::Greedy, GameSize::Small),
+        ("Greedy vs Reactive", StrategyType::Greedy, StrategyType::Reactive, GameSize::Small),
+        ("Reactive vs FatigueAware", StrategyType::Reactive, StrategyType::FatigueAware, GameSize::Small),
+        ("FatigueAware vs Random", StrategyType::FatigueAware, StrategyType::Random, GameSize::Small),
+        // DP strategies on the tiny game (exact solvers are exponential in turns).
+        // ShapleyDP plays both sides; DP and FatigueDP only support Team A.
+        ("ShapleyDP vs Greedy", StrategyType::ShapleyDp, StrategyType::Greedy, GameSize::Tiny),
+        ("Greedy vs ShapleyDP", StrategyType::Greedy, StrategyType::ShapleyDp, GameSize::Tiny),
+        ("ShapleyDP vs Reactive", StrategyType::ShapleyDp, StrategyType::Reactive, GameSize::Tiny),
+        ("Reactive vs ShapleyDP", StrategyType::Reactive, StrategyType::ShapleyDp, GameSize::Tiny),
+        ("ShapleyDP vs Random", StrategyType::ShapleyDp, StrategyType::Random, GameSize::Tiny),
+        ("DP vs ShapleyDP", StrategyType::Dp, StrategyType::ShapleyDp, GameSize::Tiny),
+        ("FatigueDP vs ShapleyDP", StrategyType::FatigueDp, StrategyType::ShapleyDp, GameSize::Tiny),
+        ("ApproxDP vs ShapleyDP", StrategyType::ApproximateDp, StrategyType::ShapleyDp, GameSize::Tiny),
     ];
     
     let mut all_results = Vec::new();
     
-    for (name, strategy_a, strategy_b) in strategies {
+    for (name, strategy_a, strategy_b, game_size) in strategies {
         println!("Running: {} vs {}", strategy_a.name(), strategy_b.name());
         
         let config = ExperimentConfig {
@@ -23,7 +33,7 @@ fn main() {
             random_seed: 42,
             team_a_strategy: strategy_a,
             team_b_strategy: strategy_b,
-            game_size: GameSize::Small, // Use small game for faster testing
+            game_size,
             strength_variation: 0.2,
         };
         

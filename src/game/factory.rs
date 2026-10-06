@@ -98,3 +98,11 @@ pub fn create_small_game() -> GameState {
     
     GameState::new(players, ropes, rules, 123)
 }
+
+/// Small game (3v3, 2 ropes) shortened to 5 turns so exact DP solvers
+/// finish in about a second per game.
+pub fn create_tiny_game() -> GameState {
+    let mut state = create_small_game();
+    state.rules.duration = 5;
+    state
+}

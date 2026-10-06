@@ -1,4 +1,4 @@
-use crate::game::{GameState, Team, create_small_game, create_default_game};
+use crate::game::{GameState, Team, create_tiny_game, create_small_game, create_default_game};
 use rand::{Rng, SeedableRng};
 use crate::strategies::Strategy;
 use crate::game::simulation::{step, calculate_score};
@@ -24,10 +24,20 @@ pub enum StrategyType {
     Greedy,
     Reactive,
     FatigueAware,
+    /// Sequential maximin DP. Plays Team A only (falls back to Greedy as B).
+    Dp,
+    /// Fatigue-aware DP with compressed energy. Team A only.
+    FatigueDp,
+    /// Limited-horizon DP. Plays either team.
+    ApproximateDp,
+    /// Simultaneous-move (Shapley) DP with mixed strategies. Plays either team.
+    ShapleyDp,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum GameSize {
+    /// Small game shortened to 5 turns; use with exact DP strategies.
+    Tiny,
     Small,
     Default,
 }
@@ -108,13 +118,14 @@ impl ExperimentRunner {
                 for game_idx in start_game..end_game {
                     let seed = config.random_seed + game_idx as u64;
                     let mut state = match config.game_size {
+                        GameSize::Tiny => create_tiny_game(),
                         GameSize::Small => create_small_game(),
                         GameSize::Default => create_default_game(),
                     };
                     apply_strength_variation(&mut state, config.strength_variation, seed);
                     
-                    let mut strategy_a = config.team_a_strategy.create(seed);
-                    let mut strategy_b = config.team_b_strategy.create(seed + 1);
+                    let mut strategy_a = config.team_a_strategy.create(seed, &state);
+                    let mut strategy_b = config.team_b_strategy.create(seed + 1, &state);
                     
                     // Run the game
                     while !state.finished() {
@@ -182,12 +193,18 @@ fn apply_strength_variation(state: &mut GameState, variation: f64, seed: u64) {
 }
 
 impl StrategyType {
-    pub fn create(&self, seed: u64) -> Box<dyn Strategy> {
+    pub fn create(&self, seed: u64, state: &GameState) -> Box<dyn Strategy> {
+        let people = state.get_team_player_count(Team::A);
+        let ropes = state.ropes.len();
         match self {
             StrategyType::Random => Box::new(crate::strategies::RandomStrategy::new(seed)),
             StrategyType::Greedy => Box::new(crate::strategies::GreedyStrategy::new()),
             StrategyType::Reactive => Box::new(crate::strategies::ReactiveStrategy::new()),
             StrategyType::FatigueAware => Box::new(crate::strategies::FatigueAwareStrategy::new()),
+            StrategyType::Dp => Box::new(crate::algorithms::DpStrategy::new(people, ropes)),
+            StrategyType::FatigueDp => Box::new(crate::algorithms::FatigueDpStrategy::new(people, ropes, 10)),
+            StrategyType::ApproximateDp => Box::new(crate::algorithms::ApproximateDpStrategy::new(people, ropes, 3, 4)),
+            StrategyType::ShapleyDp => Box::new(crate::algorithms::ShapleyDpStrategy::new(seed)),
         }
     }
     
@@ -197,6 +214,10 @@ impl StrategyType {
             StrategyType::Greedy => "Greedy",
             StrategyType::Reactive => "Reactive",
             StrategyType::FatigueAware => "FatigueAware",
+            StrategyType::Dp => "DP",
+            StrategyType::FatigueDp => "FatigueDP",
+            StrategyType::ApproximateDp => "ApproxDP",
+            StrategyType::ShapleyDp => "ShapleyDP",
         }
     }
 }
@@ -204,6 +225,7 @@ impl StrategyType {
 impl GameSize {
     pub fn name(&self) -> &str {
         match self {
+            GameSize::Tiny => "Tiny (3v3, 2 ropes, 5 turns)",
             GameSize::Small => "Small (3v3, 2 ropes)",
             GameSize::Default => "Default (12v12, 3 ropes)",
         }

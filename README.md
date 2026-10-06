@@ -330,7 +330,8 @@ Basic
   - `ApproxDPStrategy`: Limited horizon beam search for large games
 
 ### Dynamic Programming
-- **Exact Minimax DP**: Optimal finite-horizon minimax with memoization
+- **Exact Minimax DP**: Sequential maximin (A commits, B responds) with memoization. A lower bound for A in the real simultaneous-move game
+- **Shapley DP**: Simultaneous-move DP (Shapley, 1953). Each state is a matrix game solved by LP, giving mixed strategies for both teams
 - **Allocation Generation**: Efficient combinatorial algorithm for player distributions
 - **Feasibility Estimation**: State space analysis to predict computational requirements
 - **Policy Extraction**: Store optimal actions for each state
@@ -389,6 +390,7 @@ This project includes comprehensive mathematical and methodological documentatio
 - **[docs/validation.md](docs/validation.md)**: Systematic validation methodology for models, algorithms, and implementations
 - **[docs/experiments.md](docs/experiments.md)**: Guide to running experiments and comparing strategies
 - **[docs/problem-modeling-template.md](docs/problem-modeling-template.md)**: Reusable worksheet for new problems
+- **[docs/research-solution-methods.md](docs/research-solution-methods.md)**: Sourced survey of solution methods (Blotto, Shapley, SM-MCTS, CFR, PSRO, ...) mapped to model levels
 
 ---
 
@@ -456,11 +458,14 @@ cargo run --release
 # Run simulation tests
 cargo run --bin test_simulation
 
-# Run DP solver tests
-cargo run --bin test_dp
+# Run DP solver tests (exact DP is exponential; ~1-4 min)
+cargo run --release --bin test_dp
 
-# Run experiment tests
-cargo run --bin test_experiments
+# Run experiment tests (includes DP matchups; ~4 min in release)
+cargo run --release --bin test_experiments
+
+# Run unit tests
+cargo test
 ```
 
 ---
@@ -549,7 +554,7 @@ Small game (for DP testing):
 
 > **Status:** Example output shown below. These numbers are illustrative and should not be interpreted as scientifically validated results unless accompanied by the corresponding experiment configuration, seed, model version, and reproducibility information.
 
-Example results from strategy comparison (small game, 100 games each, seed 42, `strength_variation: 0.2`):
+Example results (100 games each, seed 42, `strength_variation: 0.2`; baseline rows on the small game, DP rows on the tiny 5-turn game). "Avg Score" is Team A's mean score differential. ShapleyDP maximizes expected score differential, not win probability, so it can have a positive average while winning fewer games:
 
 ```
 Strategy Comparison
@@ -560,6 +565,14 @@ Random vs Greedy            1       99        0     1.0      -0.96
 Greedy vs Reactive         24       26       50    24.0       0.04
 Reactive vs FatigueAware       40       10       50    40.0       0.42
 FatigueAware vs Random       97        3        0    97.0       0.94
+ShapleyDP vs Greedy        22       28       50    22.0       0.12
+Greedy vs ShapleyDP        24       26       50    24.0      -0.18
+ShapleyDP vs Reactive       22       28       50    22.0       0.12
+Reactive vs ShapleyDP       24       26       50    24.0      -0.18
+ShapleyDP vs Random        94        4        2    94.0       0.96
+DP vs ShapleyDP            24       26       50    24.0      -0.07
+FatigueDP vs ShapleyDP       24       26       50    24.0      -0.09
+ApproxDP vs ShapleyDP       24       26       50    24.0      -0.06
 ```
 
 ---
