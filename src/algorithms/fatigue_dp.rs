@@ -24,12 +24,15 @@ pub struct FatigueDpSolver {
 
 impl FatigueDpSolver {
     pub fn new(people_per_team: usize, ropes: usize, energy_buckets: u8) -> Self {
-        let allocations = generate_allocations(people_per_team, ropes);
-        
+        Self::for_teams(people_per_team, people_per_team, ropes, energy_buckets)
+    }
+    
+    /// Solver for teams of different sizes.
+    pub fn for_teams(people_a: usize, people_b: usize, ropes: usize, energy_buckets: u8) -> Self {
         Self {
             cache: HashMap::new(),
-            allocations_a: allocations.clone(),
-            allocations_b: allocations,
+            allocations_a: generate_allocations(people_a, ropes),
+            allocations_b: generate_allocations(people_b, ropes),
             policy_cache: HashMap::new(),
             energy_buckets,
         }
@@ -157,8 +160,12 @@ pub struct FatigueDpStrategy {
 
 impl FatigueDpStrategy {
     pub fn new(people_per_team: usize, ropes: usize, energy_buckets: u8) -> Self {
+        Self::for_teams(people_per_team, people_per_team, ropes, energy_buckets)
+    }
+    
+    pub fn for_teams(people_a: usize, people_b: usize, ropes: usize, energy_buckets: u8) -> Self {
         Self {
-            solver: FatigueDpSolver::new(people_per_team, ropes, energy_buckets),
+            solver: FatigueDpSolver::for_teams(people_a, people_b, ropes, energy_buckets),
         }
     }
 }

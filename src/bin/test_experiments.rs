@@ -6,22 +6,30 @@ fn main() {
     println!("=== Experiment Runner Test ===\n");
     
     // Test different strategy combinations
-    let strategies = vec![
-        ("Random vs Greedy", StrategyType::Random, StrategyType::Greedy, GameSize::Small),
-        ("Greedy vs Reactive", StrategyType::Greedy, StrategyType::Reactive, GameSize::Small),
-        ("Reactive vs FatigueAware", StrategyType::Reactive, StrategyType::FatigueAware, GameSize::Small),
-        ("FatigueAware vs Random", StrategyType::FatigueAware, StrategyType::Random, GameSize::Small),
-        // DP strategies on the tiny game (exact solvers are exponential in turns).
-        // ShapleyDP plays both sides; DP and FatigueDP only support Team A.
-        ("ShapleyDP vs Greedy", StrategyType::ShapleyDp, StrategyType::Greedy, GameSize::Tiny),
-        ("Greedy vs ShapleyDP", StrategyType::Greedy, StrategyType::ShapleyDp, GameSize::Tiny),
-        ("ShapleyDP vs Reactive", StrategyType::ShapleyDp, StrategyType::Reactive, GameSize::Tiny),
-        ("Reactive vs ShapleyDP", StrategyType::Reactive, StrategyType::ShapleyDp, GameSize::Tiny),
-        ("ShapleyDP vs Random", StrategyType::ShapleyDp, StrategyType::Random, GameSize::Tiny),
-        ("DP vs ShapleyDP", StrategyType::Dp, StrategyType::ShapleyDp, GameSize::Tiny),
-        ("FatigueDP vs ShapleyDP", StrategyType::FatigueDp, StrategyType::ShapleyDp, GameSize::Tiny),
-        ("ApproxDP vs ShapleyDP", StrategyType::ApproximateDp, StrategyType::ShapleyDp, GameSize::Tiny),
+    let mut strategies = vec![
+        ("Random vs Greedy".to_string(), StrategyType::Random, StrategyType::Greedy, GameSize::Small),
+        ("Greedy vs Reactive".to_string(), StrategyType::Greedy, StrategyType::Reactive, GameSize::Small),
+        ("Reactive vs FatigueAware".to_string(), StrategyType::Reactive, StrategyType::FatigueAware, GameSize::Small),
+        ("FatigueAware vs Random".to_string(), StrategyType::FatigueAware, StrategyType::Random, GameSize::Small),
     ];
+    // DP strategies on the arena games (exact solvers are exponential in turns).
+    // DP and FatigueDP only support Team A; ShapleyDP and ApproxDP play both sides.
+    for (size, tag) in [(GameSize::Arena, "3v3"), (GameSize::UnevenArena, "3v2")] {
+        for (a, b) in [
+            (StrategyType::ShapleyDp, StrategyType::Greedy),
+            (StrategyType::Greedy, StrategyType::ShapleyDp),
+            (StrategyType::ShapleyDp, StrategyType::Random),
+            (StrategyType::Dp, StrategyType::Greedy),
+            (StrategyType::Dp, StrategyType::ShapleyDp),
+            (StrategyType::ApproximateDp, StrategyType::Greedy),
+            (StrategyType::Greedy, StrategyType::ApproximateDp),
+            (StrategyType::ApproximateDp, StrategyType::ShapleyDp),
+            (StrategyType::FatigueDp, StrategyType::ShapleyDp),
+            (StrategyType::ShapleyDp, StrategyType::ShapleyDp),
+        ] {
+            strategies.push((format!("[{}] {} vs {}", tag, a.name(), b.name()), a, b, size));
+        }
+    }
     
     let mut all_results = Vec::new();
     

@@ -22,13 +22,13 @@ impl LimitedHorizonDp {
         }
     }
     
-    /// Solve with limited horizon using beam search
+    /// Solve with limited horizon using beam search.
+    /// Returns the value from `team`'s perspective (own score minus opponent's).
     pub fn solve_limited_horizon(&self, state: &GameState, team: Team) -> f64 {
-        let allocations = generate_allocations(self.people_per_team, self.ropes);
+        let allocations = generate_allocations(state.get_team_player_count(team), self.ropes);
         
         if state.finished() {
-            let score = calculate_score(state);
-            return (score.team_a - score.team_b) as f64;
+            return own_score_differential(state, team);
         }
         
         // Use beam search to evaluate actions over limited horizon
@@ -44,10 +44,9 @@ impl LimitedHorizonDp {
                     
                     // Simulate opponent with simple response
                     let opponent_action = self.get_opponent_response(&next_state, team.opponent());
-                    step(&mut next_state, &action, &opponent_action);
+                    step_as(&mut next_state, team, &action, &opponent_action);
                     
-                    let score = calculate_score(&next_state);
-                    let value = (score.team_a - score.team_b) as f64 + current_value;
+                    let value = own_score_differential(&next_state, team) + current_value;
                     
                     next_beam.push((next_state, value));
                 }
@@ -70,7 +69,7 @@ impl LimitedHorizonDp {
     
     /// Get best action using limited horizon evaluation
     pub fn get_best_action(&self, state: &GameState, team: Team) -> Option<Allocation> {
-        let allocations = generate_allocations(self.people_per_team, self.ropes);
+        let allocations = generate_allocations(state.get_team_player_count(team), self.ropes);
         
         let mut best_allocation = None;
         let mut best_value = f64::NEG_INFINITY;
@@ -80,9 +79,11 @@ impl LimitedHorizonDp {
             let action = allocation_to_action(&test_state, team, &allocation.counts);
             
             let opponent_action = self.get_opponent_response(&test_state, team.opponent());
-            step(&mut test_state, &action, &opponent_action);
+            step_as(&mut test_state, team, &action, &opponent_action);
             
-            let value = self.solve_limited_horizon(&test_state, team);
+            // Count this turn's score too, not only the turns after it.
+            let value = own_score_differential(&test_state, team)
+                + self.solve_limited_horizon(&test_state, team);
             
             if value > best_value {
                 best_value = value;
@@ -98,6 +99,24 @@ impl LimitedHorizonDp {
         // Use greedy as opponent response
         crate::strategies::greedy::GreedyStrategy::new()
             .decide(state, team)
+    }
+}
+
+/// `step` takes Team A's action first; order the actions by team.
+fn step_as(state: &mut GameState, team: Team, own: &TeamAction, opponent: &TeamAction) {
+    match team {
+        Team::A => step(state, own, opponent),
+        Team::B => step(state, opponent, own),
+    }
+}
+
+/// Score differential from `team`'s point of view.
+fn own_score_differential(state: &GameState, team: Team) -> f64 {
+    let score = calculate_score(state);
+    let diff = (score.team_a - score.team_b) as f64;
+    match team {
+        Team::A => diff,
+        Team::B => -diff,
     }
 }
 
@@ -155,5 +174,32 @@ impl Strategy for ApproximateDpStrategy {
     
     fn name(&self) -> &str {
         "ApproxDP"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game::{create_arena_game, create_uneven_arena_game};
+
+    // Against a Greedy opponent (all players on the value-2 rope), matching
+    // it there ([0, 3]) gives a 0 differential; any split concedes that rope
+    // for at most the value-1 rope. Both teams should find the match.
+    #[test]
+    fn team_a_matches_greedy_opponent_on_top_rope() {
+        let state = create_arena_game();
+        let dp = LimitedHorizonDp::new(3, 2, 3, 4);
+        assert_eq!(dp.get_best_action(&state, Team::A).unwrap().counts, vec![0, 3]);
+    }
+
+    // Uneven arena: B (2 players) cannot win the value-2 rope against
+    // Greedy A (3 players there), so B should put someone on the value-1
+    // rope instead of conceding both.
+    #[test]
+    fn team_b_optimizes_its_own_score_not_team_a() {
+        let state = create_uneven_arena_game();
+        let dp = LimitedHorizonDp::new(3, 2, 3, 4);
+        let counts = dp.get_best_action(&state, Team::B).unwrap().counts;
+        assert!(counts[0] >= 1, "B conceded both ropes: {:?}", counts);
     }
 }

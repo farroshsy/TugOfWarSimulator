@@ -99,10 +99,34 @@ pub fn create_small_game() -> GameState {
     GameState::new(players, ropes, rules, 123)
 }
 
-/// Small game (3v3, 2 ropes) shortened to 5 turns so exact DP solvers
-/// finish in about a second per game.
-pub fn create_tiny_game() -> GameState {
+/// Arena game: 3v3, 2 light ropes (values 1 and 2, weight 0.5), positions
+/// -2..=2, 6 turns, free switching, no fatigue.
+///
+/// Designed so strategy matters: light ropes move on any force imbalance,
+/// free switching lets teams fully reallocate every turn (a repeated
+/// Colonel Blotto game), and the state space stays small enough for exact
+/// Shapley DP (~1k states, well under a second).
+pub fn create_arena_game() -> GameState {
     let mut state = create_small_game();
-    state.rules.duration = 5;
+    state.ropes = vec![
+        Rope::new(0, 0, -2, 2, 0.5, 1),
+        Rope::new(1, 0, -2, 2, 0.5, 2),
+    ];
+    state.rules.duration = 6;
+    state.rules.position_range = 2;
+    state.rules.switching_stamina_cost = 0.0;
+    state.rules.max_switches_per_turn = 3;
+    state.rebuild_rope_counts();
+    state
+}
+
+/// Arena game with uneven teams: 3 players for A, 2 for B.
+/// Unequal budgets are the classic Colonel Blotto case where the weaker
+/// side must randomize.
+pub fn create_uneven_arena_game() -> GameState {
+    let mut state = create_arena_game();
+    state.players.pop();
+    state.assignments.pop();
+    state.rebuild_rope_counts();
     state
 }

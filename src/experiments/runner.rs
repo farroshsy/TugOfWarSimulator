@@ -1,4 +1,4 @@
-use crate::game::{GameState, Team, create_tiny_game, create_small_game, create_default_game};
+use crate::game::{GameState, Team, create_arena_game, create_uneven_arena_game, create_small_game, create_default_game};
 use rand::{Rng, SeedableRng};
 use crate::strategies::Strategy;
 use crate::game::simulation::{step, calculate_score};
@@ -36,8 +36,10 @@ pub enum StrategyType {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum GameSize {
-    /// Small game shortened to 5 turns; use with exact DP strategies.
-    Tiny,
+    /// 3v3 arena (repeated Blotto); small enough for exact DP strategies.
+    Arena,
+    /// 3v2 arena; uneven teams, small enough for exact DP strategies.
+    UnevenArena,
     Small,
     Default,
 }
@@ -118,7 +120,8 @@ impl ExperimentRunner {
                 for game_idx in start_game..end_game {
                     let seed = config.random_seed + game_idx as u64;
                     let mut state = match config.game_size {
-                        GameSize::Tiny => create_tiny_game(),
+                        GameSize::Arena => create_arena_game(),
+                        GameSize::UnevenArena => create_uneven_arena_game(),
                         GameSize::Small => create_small_game(),
                         GameSize::Default => create_default_game(),
                     };
@@ -194,16 +197,17 @@ fn apply_strength_variation(state: &mut GameState, variation: f64, seed: u64) {
 
 impl StrategyType {
     pub fn create(&self, seed: u64, state: &GameState) -> Box<dyn Strategy> {
-        let people = state.get_team_player_count(Team::A);
+        let people_a = state.get_team_player_count(Team::A);
+        let people_b = state.get_team_player_count(Team::B);
         let ropes = state.ropes.len();
         match self {
             StrategyType::Random => Box::new(crate::strategies::RandomStrategy::new(seed)),
             StrategyType::Greedy => Box::new(crate::strategies::GreedyStrategy::new()),
             StrategyType::Reactive => Box::new(crate::strategies::ReactiveStrategy::new()),
             StrategyType::FatigueAware => Box::new(crate::strategies::FatigueAwareStrategy::new()),
-            StrategyType::Dp => Box::new(crate::algorithms::DpStrategy::new(people, ropes)),
-            StrategyType::FatigueDp => Box::new(crate::algorithms::FatigueDpStrategy::new(people, ropes, 10)),
-            StrategyType::ApproximateDp => Box::new(crate::algorithms::ApproximateDpStrategy::new(people, ropes, 3, 4)),
+            StrategyType::Dp => Box::new(crate::algorithms::DpStrategy::for_teams(people_a, people_b, ropes)),
+            StrategyType::FatigueDp => Box::new(crate::algorithms::FatigueDpStrategy::for_teams(people_a, people_b, ropes, 10)),
+            StrategyType::ApproximateDp => Box::new(crate::algorithms::ApproximateDpStrategy::new(people_a, ropes, 3, 4)),
             StrategyType::ShapleyDp => Box::new(crate::algorithms::ShapleyDpStrategy::new(seed)),
         }
     }
@@ -225,7 +229,8 @@ impl StrategyType {
 impl GameSize {
     pub fn name(&self) -> &str {
         match self {
-            GameSize::Tiny => "Tiny (3v3, 2 ropes, 5 turns)",
+            GameSize::Arena => "Arena (3v3, 2 light ropes, 6 turns)",
+            GameSize::UnevenArena => "Uneven Arena (3v2, 2 light ropes, 6 turns)",
             GameSize::Small => "Small (3v3, 2 ropes)",
             GameSize::Default => "Default (12v12, 3 ropes)",
         }

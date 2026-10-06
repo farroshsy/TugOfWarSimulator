@@ -41,12 +41,15 @@ pub struct DpSolver {
 
 impl DpSolver {
     pub fn new(people_per_team: usize, ropes: usize) -> Self {
-        let allocations = generate_allocations(people_per_team, ropes);
-        
+        Self::for_teams(people_per_team, people_per_team, ropes)
+    }
+    
+    /// Solver for teams of different sizes.
+    pub fn for_teams(people_a: usize, people_b: usize, ropes: usize) -> Self {
         Self {
             cache: HashMap::new(),
-            allocations_a: allocations.clone(),
-            allocations_b: allocations,
+            allocations_a: generate_allocations(people_a, ropes),
+            allocations_b: generate_allocations(people_b, ropes),
             policy_cache: HashMap::new(),
         }
     }
@@ -234,9 +237,13 @@ pub struct DpStrategy {
 
 impl DpStrategy {
     pub fn new(people_per_team: usize, ropes: usize) -> Self {
+        Self::for_teams(people_per_team, people_per_team, ropes)
+    }
+    
+    pub fn for_teams(people_a: usize, people_b: usize, ropes: usize) -> Self {
         Self {
-            solver: DpSolver::new(people_per_team, ropes),
-            people_per_team,
+            solver: DpSolver::for_teams(people_a, people_b, ropes),
+            people_per_team: people_a,
             ropes,
         }
     }

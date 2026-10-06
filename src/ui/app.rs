@@ -1,5 +1,5 @@
 use eframe::egui;
-use crate::game::{GameState, Team, create_default_game, create_small_game, create_tiny_game};
+use crate::game::{GameState, Team, create_default_game, create_small_game, create_arena_game, create_uneven_arena_game};
 use crate::strategies::{Strategy, GreedyStrategy, ReactiveStrategy};
 use crate::experiments::{StrategyType, GameSize};
 use crate::game::simulation::{step, calculate_score};
@@ -15,7 +15,7 @@ const ALL_STRATEGIES: [StrategyType; 8] = [
     StrategyType::ShapleyDp,
 ];
 
-/// Exact DP solvers are exponential in game length; only offer them on the tiny game.
+/// Exact DP solvers are exponential in game length; only offer them on the arena games.
 fn is_exact_dp(strategy: StrategyType) -> bool {
     matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp | StrategyType::ShapleyDp)
 }
@@ -114,21 +114,21 @@ impl eframe::App for TugOfWarApp {
                     ui.heading("Strategies");
                     ui.separator();
                     
-                    let tiny = self.game_size == GameSize::Tiny;
+                    let exact_size = matches!(self.game_size, GameSize::Arena | GameSize::UnevenArena);
                     
                     ui.label("Team A Strategy:");
                     for strategy in ALL_STRATEGIES {
-                        ui.add_enabled_ui(tiny || !is_exact_dp(strategy), |ui| {
+                        ui.add_enabled_ui(exact_size || !is_exact_dp(strategy), |ui| {
                             ui.radio_value(&mut self.strategy_a, strategy, strategy.name())
-                                .on_disabled_hover_text("Exact DP: select Tiny game and Reset");
+                                .on_disabled_hover_text("Exact DP: select an Arena game and Reset");
                         });
                     }
                     
                     ui.label("Team B Strategy:");
                     for strategy in ALL_STRATEGIES {
-                        ui.add_enabled_ui(tiny || !is_exact_dp(strategy), |ui| {
+                        ui.add_enabled_ui(exact_size || !is_exact_dp(strategy), |ui| {
                             ui.radio_value(&mut self.strategy_b, strategy, strategy.name())
-                                .on_disabled_hover_text("Exact DP: select Tiny game and Reset");
+                                .on_disabled_hover_text("Exact DP: select an Arena game and Reset");
                         });
                     }
                     ui.small("DP and FatigueDP plan for Team A only (Greedy as B).");
@@ -141,10 +141,11 @@ impl eframe::App for TugOfWarApp {
                     
                     ui.label("Game Size:");
                     let exact_dp_selected = is_exact_dp(self.strategy_a) || is_exact_dp(self.strategy_b);
-                    for size in [GameSize::Tiny, GameSize::Small, GameSize::Default] {
-                        ui.add_enabled_ui(size == GameSize::Tiny || !exact_dp_selected, |ui| {
+                    for size in [GameSize::Arena, GameSize::UnevenArena, GameSize::Small, GameSize::Default] {
+                        let exact_ok = matches!(size, GameSize::Arena | GameSize::UnevenArena);
+                        ui.add_enabled_ui(exact_ok || !exact_dp_selected, |ui| {
                             ui.radio_value(&mut self.game_size, size, size.name())
-                                .on_disabled_hover_text("Exact DP strategies need the Tiny game");
+                                .on_disabled_hover_text("Exact DP strategies need an Arena game");
                         });
                     }
                     
@@ -196,7 +197,8 @@ impl TugOfWarApp {
     
     fn reset_game(&mut self) {
         self.state = match self.game_size {
-            GameSize::Tiny => create_tiny_game(),
+            GameSize::Arena => create_arena_game(),
+            GameSize::UnevenArena => create_uneven_arena_game(),
             GameSize::Small => create_small_game(),
             GameSize::Default => create_default_game(),
         };
