@@ -2,6 +2,7 @@ use eframe::egui;
 use crate::game::{GameState, Team, create_default_game, create_small_game, create_arena_game, create_uneven_arena_game};
 use crate::strategies::{Strategy, GreedyStrategy, ReactiveStrategy};
 use crate::experiments::{StrategyType, GameSize};
+use crate::algorithms::ShapleyDpSolver;
 use crate::game::simulation::{step, calculate_score};
 
 const ALL_STRATEGIES: [StrategyType; 9] = [
@@ -17,6 +18,29 @@ const ALL_STRATEGIES: [StrategyType; 9] = [
 ];
 
 /// Exact DP solvers are exponential in game length; only offer them on the arena games.
+fn supports_exact_dp(size: GameSize) -> bool {
+    matches!(size, GameSize::Arena | GameSize::UnevenArena)
+}
+
+/// Rows for the DP Inspector: (allocation, probability) for a team's
+/// equilibrium mixed strategy at this state, most likely first, zeros dropped.
+fn inspector_rows(solver: &mut ShapleyDpSolver, state: &GameState, team: Team) -> Vec<(Vec<usize>, f64)> {
+    let stage = solver.stage(state).clone();
+    let probabilities = match team {
+        Team::A => stage.row_strategy,
+        Team::B => stage.col_strategy,
+    };
+    let mut rows: Vec<(Vec<usize>, f64)> = solver
+        .allocations(team)
+        .iter()
+        .zip(probabilities)
+        .filter(|(_, p)| *p > 1e-6)
+        .map(|(allocation, p)| (allocation.counts.clone(), p))
+        .collect();
+    rows.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    rows
+}
+
 fn is_exact_dp(strategy: StrategyType) -> bool {
     matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp | StrategyType::ShapleyDp | StrategyType::ShapleyDpWin)
 }
@@ -30,7 +54,12 @@ pub struct TugOfWarApp {
     strategy_a_impl: Option<Box<dyn Strategy>>,
     strategy_b_impl: Option<Box<dyn Strategy>>,
     seed: u64,
+    // Selected size; applied on Reset. `state_size` is what `state` was built with.
     game_size: GameSize,
+    state_size: GameSize,
+    show_inspector: bool,
+    // Built on demand for the current game; cleared on reset.
+    inspector_solver: Option<ShapleyDpSolver>,
 }
 
 impl Default for TugOfWarApp {
@@ -46,6 +75,9 @@ impl Default for TugOfWarApp {
             strategy_b_impl: Some(Box::new(ReactiveStrategy::new())),
             seed: 42,
             game_size: GameSize::Default,
+            state_size: GameSize::Default,
+            show_inspector: false,
+            inspector_solver: None,
         }
     }
 }
@@ -115,7 +147,8 @@ impl eframe::App for TugOfWarApp {
                     ui.heading("Strategies");
                     ui.separator();
                     
-                    let exact_size = matches!(self.game_size, GameSize::Arena | GameSize::UnevenArena);
+                    // Strategies act on the live state, so gate on the size it was built with.
+                    let exact_size = supports_exact_dp(self.state_size);
                     
                     ui.label("Team A Strategy:");
                     for strategy in ALL_STRATEGIES {
@@ -143,7 +176,7 @@ impl eframe::App for TugOfWarApp {
                     ui.label("Game Size:");
                     let exact_dp_selected = is_exact_dp(self.strategy_a) || is_exact_dp(self.strategy_b);
                     for size in [GameSize::Arena, GameSize::UnevenArena, GameSize::Small, GameSize::Default] {
-                        let exact_ok = matches!(size, GameSize::Arena | GameSize::UnevenArena);
+                        let exact_ok = supports_exact_dp(size);
                         ui.add_enabled_ui(exact_ok || !exact_dp_selected, |ui| {
                             ui.radio_value(&mut self.game_size, size, size.name())
                                 .on_disabled_hover_text("Exact DP strategies need an Arena game");
@@ -154,6 +187,9 @@ impl eframe::App for TugOfWarApp {
                     
                     // Seed display
                     ui.label(format!("Seed: {}", self.seed));
+                    
+                    ui.separator();
+                    self.draw_inspector(ui);
                 });
             });
         });
@@ -197,6 +233,8 @@ impl TugOfWarApp {
     }
     
     fn reset_game(&mut self) {
+        self.inspector_solver = None;
+        self.state_size = self.game_size;
         self.state = match self.game_size {
             GameSize::Arena => create_arena_game(),
             GameSize::UnevenArena => create_uneven_arena_game(),
@@ -206,6 +244,38 @@ impl TugOfWarApp {
         self.running = false;
         self.strategy_a_impl = Some(self.strategy_a.create(self.seed, &self.state));
         self.strategy_b_impl = Some(self.strategy_b.create(self.seed + 1, &self.state));
+    }
+    
+    fn draw_inspector(&mut self, ui: &mut egui::Ui) {
+        ui.heading("DP Inspector");
+        let solvable = supports_exact_dp(self.state_size);
+        ui.add_enabled(solvable, egui::Checkbox::new(&mut self.show_inspector, "Show Shapley DP solution"))
+            .on_disabled_hover_text("Select an Arena game and Reset");
+        if !self.show_inspector || !solvable {
+            return;
+        }
+        if self.state.finished() {
+            ui.label("Game over.");
+            return;
+        }
+
+        let state = &self.state;
+        let solver = self.inspector_solver.get_or_insert_with(|| ShapleyDpSolver::new(state));
+        let value = solver.solve(state);
+        let rows_a = inspector_rows(solver, state, Team::A);
+        let rows_b = inspector_rows(solver, state, Team::B);
+        let states = solver.cache_size();
+
+        ui.label(format!("t = {}, rope positions = {:?}", state.time,
+            state.ropes.iter().map(|r| r.position).collect::<Vec<_>>()));
+        ui.label(format!("Game value (A's expected final margin): {:+.3}", value));
+        ui.label(format!("States solved: {}", states));
+        for (team, rows) in [(Team::A, rows_a), (Team::B, rows_b)] {
+            ui.label(format!("Team {:?} optimal mix (players per rope):", team));
+            for (allocation, p) in rows {
+                ui.monospace(format!("  {:?}  {:>5.1}%", allocation, p * 100.0));
+            }
+        }
     }
     
     fn draw_arena(&mut self, ui: &mut egui::Ui) {
@@ -255,5 +325,24 @@ impl TugOfWarApp {
         
         ui.separator();
         ui.label("TEAM B");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inspector_rows_are_a_sorted_distribution() {
+        let state = create_uneven_arena_game();
+        let mut solver = ShapleyDpSolver::new(&state);
+        for team in [Team::A, Team::B] {
+            let rows = inspector_rows(&mut solver, &state, team);
+            let total: f64 = rows.iter().map(|(_, p)| p).sum();
+            assert!((total - 1.0).abs() < 1e-6);
+            assert!(rows.windows(2).all(|w| w[0].1 >= w[1].1));
+            let players = state.get_team_player_count(team);
+            assert!(rows.iter().all(|(a, _)| a.iter().sum::<usize>() == players));
+        }
     }
 }
