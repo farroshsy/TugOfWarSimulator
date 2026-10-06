@@ -34,6 +34,9 @@ pub enum StrategyType {
     ShapleyDp,
     /// Shapley DP maximizing P(win) - P(loss) instead of score margin.
     ShapleyDpWin,
+    /// Simultaneous-move MCTS with regret matching (1000 iterations per turn).
+    /// Approximates Shapley DP on games too large to solve exactly.
+    SmMcts,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -215,6 +218,7 @@ impl StrategyType {
                 seed,
                 crate::algorithms::Objective::WinProbability,
             )),
+            StrategyType::SmMcts => Box::new(crate::algorithms::SmMctsStrategy::new(seed, 1000)),
         }
     }
     
@@ -229,6 +233,7 @@ impl StrategyType {
             StrategyType::ApproximateDp => "ApproxDP",
             StrategyType::ShapleyDp => "ShapleyDP",
             StrategyType::ShapleyDpWin => "ShapleyDP-Win",
+            StrategyType::SmMcts => "SM-MCTS",
         }
     }
 }

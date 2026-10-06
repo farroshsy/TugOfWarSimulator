@@ -3,6 +3,11 @@ Random vs Greedy,1,99,0,0.0100,-0.96
 Greedy vs Reactive,24,26,50,0.2400,0.04
 Reactive vs FatigueAware,40,10,50,0.4000,0.42
 FatigueAware vs Random,97,3,0,0.9700,0.94
+[small] SM-MCTS vs Greedy,13,75,12,0.1300,-0.40
+[small] Greedy vs SM-MCTS,77,13,10,0.7700,0.48
+[small] SM-MCTS vs Reactive,13,75,12,0.1300,-0.40
+[small] SM-MCTS vs ApproxDP,14,74,12,0.1400,-0.45
+[small] ApproxDP vs SM-MCTS,78,12,10,0.7800,0.50
 [3v3] ShapleyDP vs Greedy,34,38,28,0.3400,0.44
 [3v3] Greedy vs ShapleyDP,34,38,28,0.3400,-0.46
 [3v3] ShapleyDP vs Random,67,22,11,0.6700,0.69
@@ -13,6 +18,10 @@ FatigueAware vs Random,97,3,0,0.9700,0.94
 [3v3] ApproxDP vs ShapleyDP,34,36,30,0.3400,-0.06
 [3v3] FatigueDP vs ShapleyDP,34,32,34,0.3400,-0.14
 [3v3] ShapleyDP vs ShapleyDP,34,38,28,0.3400,-0.08
+[3v3] ShapleyDP-Win vs Greedy,34,38,28,0.3400,-0.08
+[3v3] ShapleyDP-Win vs ShapleyDP,34,33,33,0.3400,-0.41
+[3v3] SM-MCTS vs Greedy,34,53,13,0.3400,0.37
+[3v3] SM-MCTS vs ShapleyDP,34,51,15,0.3400,-0.31
 [3v2] ShapleyDP vs Greedy,99,1,0,0.9900,2.46
 [3v2] Greedy vs ShapleyDP,100,0,0,1.0000,1.06
 [3v2] ShapleyDP vs Random,97,2,1,0.9700,2.39
@@ -23,3 +32,7 @@ FatigueAware vs Random,97,3,0,0.9700,0.94
 [3v2] ApproxDP vs ShapleyDP,100,0,0,1.0000,2.36
 [3v2] FatigueDP vs ShapleyDP,100,0,0,1.0000,1.73
 [3v2] ShapleyDP vs ShapleyDP,98,0,2,0.9800,2.32
+[3v2] ShapleyDP-Win vs Greedy,100,0,0,1.0000,2.00
+[3v2] ShapleyDP-Win vs ShapleyDP,100,0,0,1.0000,1.06
+[3v2] SM-MCTS vs Greedy,100,0,0,1.0000,2.78
+[3v2] SM-MCTS vs ShapleyDP,100,0,0,1.0000,2.30

@@ -8,16 +8,15 @@ use std::cmp::Ordering;
 pub struct LimitedHorizonDp {
     horizon: usize,
     beam_width: usize,
-    people_per_team: usize,
     ropes: usize,
 }
 
 impl LimitedHorizonDp {
-    pub fn new(people_per_team: usize, ropes: usize, horizon: usize, beam_width: usize) -> Self {
+    /// `_people_per_team` is unused: team sizes are read from the state.
+    pub fn new(_people_per_team: usize, ropes: usize, horizon: usize, beam_width: usize) -> Self {
         Self {
             horizon,
             beam_width,
-            people_per_team,
             ropes,
         }
     }

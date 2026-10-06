@@ -12,6 +12,16 @@ fn main() {
         ("Reactive vs FatigueAware".to_string(), StrategyType::Reactive, StrategyType::FatigueAware, GameSize::Small),
         ("FatigueAware vs Random".to_string(), StrategyType::FatigueAware, StrategyType::Random, GameSize::Small),
     ];
+    // SM-MCTS on the small game, where exact DP is too slow to run per game.
+    for (a, b) in [
+        (StrategyType::SmMcts, StrategyType::Greedy),
+        (StrategyType::Greedy, StrategyType::SmMcts),
+        (StrategyType::SmMcts, StrategyType::Reactive),
+        (StrategyType::SmMcts, StrategyType::ApproximateDp),
+        (StrategyType::ApproximateDp, StrategyType::SmMcts),
+    ] {
+        strategies.push((format!("[small] {} vs {}", a.name(), b.name()), a, b, GameSize::Small));
+    }
     // DP strategies on the arena games (exact solvers are exponential in turns).
     // DP and FatigueDP only support Team A; ShapleyDP and ApproxDP play both sides.
     for (size, tag) in [(GameSize::Arena, "3v3"), (GameSize::UnevenArena, "3v2")] {
@@ -28,6 +38,8 @@ fn main() {
             (StrategyType::ShapleyDp, StrategyType::ShapleyDp),
             (StrategyType::ShapleyDpWin, StrategyType::Greedy),
             (StrategyType::ShapleyDpWin, StrategyType::ShapleyDp),
+            (StrategyType::SmMcts, StrategyType::Greedy),
+            (StrategyType::SmMcts, StrategyType::ShapleyDp),
         ] {
             strategies.push((format!("[{}] {} vs {}", tag, a.name(), b.name()), a, b, size));
         }

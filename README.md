@@ -331,12 +331,14 @@ Basic
 
 ### Dynamic Programming
 - **Exact Minimax DP**: Sequential maximin (A commits, B responds) with memoization. A lower bound for A in the real simultaneous-move game
-- **Shapley DP**: Simultaneous-move DP (Shapley, 1953). Each state is a matrix game solved by LP, giving mixed strategies for both teams
+- **Shapley DP**: Simultaneous-move DP (Shapley, 1953). Each state is a matrix game solved by LP, giving mixed strategies for both teams. Objectives: expected score margin, or win probability (`ShapleyDP-Win`)
+- **SM-MCTS**: Simultaneous-move Monte Carlo Tree Search with regret matching (Lisý et al., 2013). Approximates Shapley DP from the current state when exact DP is too slow
 - **Allocation Generation**: Efficient combinatorial algorithm for player distributions
 - **Feasibility Estimation**: State space analysis to predict computational requirements
 - **Policy Extraction**: Store optimal actions for each state
 - **Fatigue-Aware DP**: Extended state with compressed energy buckets
 - **Approximate Methods**: Limited horizon beam search for large state spaces
+- **Arena Games**: 3v3 and 3v2 repeated Colonel Blotto games (two light ropes, 6 turns, free switching) where strategy matters and exact DP finishes in under a second
 
 ### Advanced Mechanics
 - **Heterogeneous Players**: Strong, Normal, Weak player classes with different attributes
@@ -356,7 +358,8 @@ Basic
 - **Arena Visualization**: Real-time rope position display
 - **Player Panels**: Team composition and energy monitoring
 - **Game Controls**: Start, pause, step, reset with speed control
-- **Strategy Selection**: Dynamic strategy switching between games
+- **Strategy Selection**: Dynamic strategy switching between games; slow solvers are only offered on game sizes they can handle
+- **DP Inspector**: On arena games, shows the Shapley DP game value and both teams' optimal mixed strategies for the current turn
 
 ---
 
@@ -554,26 +557,57 @@ Small game (for DP testing):
 
 > **Status:** Example output shown below. These numbers are illustrative and should not be interpreted as scientifically validated results unless accompanied by the corresponding experiment configuration, seed, model version, and reproducibility information.
 
-Example results (100 games each, seed 42, `strength_variation: 0.2`; baseline rows on the small game, DP rows on the tiny 5-turn game). "Avg Score" is Team A's mean score differential. ShapleyDP maximizes expected score differential, not win probability, so it can have a positive average while winning fewer games:
+Example results (100 games each, seed 42, `strength_variation: 0.2`). Rows are "A vs B"; "Avg Score" is Team A's mean final score differential. Plain rows use the small game, `[small]` rows too; `[3v3]`/`[3v2]` rows use the arena games. Run with `cargo run --release --bin test_experiments` (~6 min).
 
 ```
-Strategy Comparison
-====================
 Strategy                 Wins   Losses    Draws Win Rate  Avg Score
 --------                 ----   ------    ----- --------  ---------
 Random vs Greedy            1       99        0     1.0      -0.96
 Greedy vs Reactive         24       26       50    24.0       0.04
 Reactive vs FatigueAware       40       10       50    40.0       0.42
 FatigueAware vs Random       97        3        0    97.0       0.94
-ShapleyDP vs Greedy        22       28       50    22.0       0.12
-Greedy vs ShapleyDP        24       26       50    24.0      -0.18
-ShapleyDP vs Reactive       22       28       50    22.0       0.12
-Reactive vs ShapleyDP       24       26       50    24.0      -0.18
-ShapleyDP vs Random        94        4        2    94.0       0.96
-DP vs ShapleyDP            24       26       50    24.0      -0.07
-FatigueDP vs ShapleyDP       24       26       50    24.0      -0.09
-ApproxDP vs ShapleyDP       24       26       50    24.0      -0.06
+[small] SM-MCTS vs Greedy       13       75       12    13.0      -0.40
+[small] Greedy vs SM-MCTS       77       13       10    77.0       0.48
+[small] SM-MCTS vs Reactive       13       75       12    13.0      -0.40
+[small] SM-MCTS vs ApproxDP       14       74       12    14.0      -0.45
+[small] ApproxDP vs SM-MCTS       78       12       10    78.0       0.50
+[3v3] ShapleyDP vs Greedy       34       38       28    34.0       0.44
+[3v3] Greedy vs ShapleyDP       34       38       28    34.0      -0.46
+[3v3] ShapleyDP vs Random       67       22       11    67.0       0.69
+[3v3] DP vs Greedy         34       38       28    34.0       0.42
+[3v3] DP vs ShapleyDP       34       35       31    34.0      -0.15
+[3v3] ApproxDP vs Greedy       34       38       28    34.0       0.64
+[3v3] Greedy vs ApproxDP       34       38       28    34.0      -0.80
+[3v3] ApproxDP vs ShapleyDP       34       36       30    34.0      -0.06
+[3v3] FatigueDP vs ShapleyDP       34       32       34    34.0      -0.14
+[3v3] ShapleyDP vs ShapleyDP       34       38       28    34.0      -0.08
+[3v3] ShapleyDP-Win vs Greedy       34       38       28    34.0      -0.08
+[3v3] ShapleyDP-Win vs ShapleyDP       34       33       33    34.0      -0.41
+[3v3] SM-MCTS vs Greedy       34       53       13    34.0       0.37
+[3v3] SM-MCTS vs ShapleyDP       34       51       15    34.0      -0.31
+[3v2] ShapleyDP vs Greedy       99        1        0    99.0       2.46
+[3v2] Greedy vs ShapleyDP      100        0        0   100.0       1.06
+[3v2] ShapleyDP vs Random       97        2        1    97.0       2.39
+[3v2] DP vs Greedy        100        0        0   100.0       3.00
+[3v2] DP vs ShapleyDP      100        0        0   100.0       1.73
+[3v2] ApproxDP vs Greedy      100        0        0   100.0       3.00
+[3v2] Greedy vs ApproxDP      100        0        0   100.0       1.00
+[3v2] ApproxDP vs ShapleyDP      100        0        0   100.0       2.36
+[3v2] FatigueDP vs ShapleyDP      100        0        0   100.0       1.73
+[3v2] ShapleyDP vs ShapleyDP       98        0        2    98.0       2.32
+[3v2] ShapleyDP-Win vs Greedy      100        0        0   100.0       2.00
+[3v2] ShapleyDP-Win vs ShapleyDP      100        0        0   100.0       1.06
+[3v2] SM-MCTS vs Greedy      100        0        0   100.0       2.78
+[3v2] SM-MCTS vs ShapleyDP      100        0        0   100.0       2.30
 ```
+
+### Findings so far
+
+1. **Winners are decided before play starts.** In the arena games, every initial state has win-probability value exactly -1, 0 or +1: with deterministic physics and perfect information, the stronger team (after the strength draw) can always force the result. Strategy only changes the *margin*, which is why win counts barely move between rows while "Avg Score" does. Win probability only becomes meaningful once uncertainty (stochastic physics, hidden information) is added.
+2. **Exploit vs. safety.** Sequential DP and ApproxDP plan against one assumed opponent and beat Greedy by more than Shapley DP does ([3v2] DP vs Greedy +3.00 vs ShapleyDP +2.46), but Shapley DP punishes them ([3v2] DP vs ShapleyDP +1.73). Shapley DP is never worse than the game value against any opponent.
+3. **Shapley DP as the weaker team dodges.** In 3v2, Greedy B stacks its 2 players against A's 3 on the value-2 rope and concedes it (a +2 margin for A). Shapley DP as B cuts Greedy's margin to +1.06 by contesting the value-1 rope it can win instead.
+4. **SM-MCTS approximates Shapley DP where it converges.** On the arenas it plays close to Shapley DP ([3v2] vs ShapleyDP +2.30 vs Shapley self-play +2.32). On the 10-turn small game with heavy ropes and a 2-switch limit, 1,000 iterations per turn are not enough (it loses to Greedy); it reaches parity with Greedy at about 16,000 iterations.
+5. **The state is bigger than it looks.** The exact DP originally keyed states by rope positions only. Switching costs stamina and switches are limited, so assignments and stamina are part of the state too: the small game grows from 91 to ~724,000 states (82 s to solve in release).
 
 ---
 

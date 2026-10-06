@@ -5,12 +5,13 @@ use crate::experiments::{StrategyType, GameSize};
 use crate::algorithms::ShapleyDpSolver;
 use crate::game::simulation::{step, calculate_score};
 
-const ALL_STRATEGIES: [StrategyType; 9] = [
+const ALL_STRATEGIES: [StrategyType; 10] = [
     StrategyType::Random,
     StrategyType::Greedy,
     StrategyType::Reactive,
     StrategyType::FatigueAware,
     StrategyType::ApproximateDp,
+    StrategyType::SmMcts,
     StrategyType::Dp,
     StrategyType::FatigueDp,
     StrategyType::ShapleyDp,
@@ -44,6 +45,21 @@ fn inspector_rows(solver: &mut ShapleyDpSolver, state: &GameState, team: Team) -
 fn is_exact_dp(strategy: StrategyType) -> bool {
     matches!(strategy, StrategyType::Dp | StrategyType::FatigueDp | StrategyType::ShapleyDp | StrategyType::ShapleyDpWin)
 }
+
+/// Whether a strategy can run on a game size without freezing the UI.
+/// Exact DP is exponential in game length; SM-MCTS takes ~1s per turn on
+/// the default game (1000 playouts of up to 60 turns with 24 players).
+fn strategy_allowed(strategy: StrategyType, size: GameSize) -> bool {
+    if is_exact_dp(strategy) {
+        supports_exact_dp(size)
+    } else if strategy == StrategyType::SmMcts {
+        size != GameSize::Default
+    } else {
+        true
+    }
+}
+
+const SLOW_STRATEGY_HINT: &str = "Too slow for this game size: pick a smaller game and Reset";
 
 pub struct TugOfWarApp {
     state: GameState,
@@ -148,21 +164,19 @@ impl eframe::App for TugOfWarApp {
                     ui.separator();
                     
                     // Strategies act on the live state, so gate on the size it was built with.
-                    let exact_size = supports_exact_dp(self.state_size);
-                    
                     ui.label("Team A Strategy:");
                     for strategy in ALL_STRATEGIES {
-                        ui.add_enabled_ui(exact_size || !is_exact_dp(strategy), |ui| {
+                        ui.add_enabled_ui(strategy_allowed(strategy, self.state_size), |ui| {
                             ui.radio_value(&mut self.strategy_a, strategy, strategy.name())
-                                .on_disabled_hover_text("Exact DP: select an Arena game and Reset");
+                                .on_disabled_hover_text(SLOW_STRATEGY_HINT);
                         });
                     }
                     
                     ui.label("Team B Strategy:");
                     for strategy in ALL_STRATEGIES {
-                        ui.add_enabled_ui(exact_size || !is_exact_dp(strategy), |ui| {
+                        ui.add_enabled_ui(strategy_allowed(strategy, self.state_size), |ui| {
                             ui.radio_value(&mut self.strategy_b, strategy, strategy.name())
-                                .on_disabled_hover_text("Exact DP: select an Arena game and Reset");
+                                .on_disabled_hover_text(SLOW_STRATEGY_HINT);
                         });
                     }
                     ui.small("DP and FatigueDP plan for Team A only (Greedy as B).");
@@ -174,12 +188,12 @@ impl eframe::App for TugOfWarApp {
                     ui.separator();
                     
                     ui.label("Game Size:");
-                    let exact_dp_selected = is_exact_dp(self.strategy_a) || is_exact_dp(self.strategy_b);
+
                     for size in [GameSize::Arena, GameSize::UnevenArena, GameSize::Small, GameSize::Default] {
-                        let exact_ok = supports_exact_dp(size);
-                        ui.add_enabled_ui(exact_ok || !exact_dp_selected, |ui| {
+                        let ok = strategy_allowed(self.strategy_a, size) && strategy_allowed(self.strategy_b, size);
+                        ui.add_enabled_ui(ok, |ui| {
                             ui.radio_value(&mut self.game_size, size, size.name())
-                                .on_disabled_hover_text("Exact DP strategies need an Arena game");
+                                .on_disabled_hover_text("A selected strategy is too slow for this game size");
                         });
                     }
                     
@@ -331,6 +345,15 @@ impl TugOfWarApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn slow_strategies_are_gated_by_game_size() {
+        assert!(strategy_allowed(StrategyType::ShapleyDp, GameSize::Arena));
+        assert!(!strategy_allowed(StrategyType::ShapleyDp, GameSize::Small));
+        assert!(strategy_allowed(StrategyType::SmMcts, GameSize::Small));
+        assert!(!strategy_allowed(StrategyType::SmMcts, GameSize::Default));
+        assert!(strategy_allowed(StrategyType::Greedy, GameSize::Default));
+    }
 
     #[test]
     fn inspector_rows_are_a_sorted_distribution() {
